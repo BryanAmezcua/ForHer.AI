@@ -24,8 +24,13 @@ ForHer.AI/
 │   │       └── textarea.jsx    # shadcn Textarea component
 │   └── lib/
 │       └── utils.js            # cn() utility (clsx + tailwind-merge)
+│   └── lib/
+│       ├── utils.js            # cn() utility (clsx + tailwind-merge)
+│       ├── openai.js           # OpenAI client singleton
+│       └── taste-profile.js    # generateTasteProfile() — LLM taste extraction
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
+├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
 ├── CLAUDE.md                   # Project specs and instructions
 ├── package.json
 ├── next.config.mjs
@@ -44,8 +49,15 @@ The main page uses a `phase` state to switch between three views:
 
 **API Communication:**
 - Client POSTs `{ description }` to `/api/recommendations`
-- Server returns `{ recommendations: [...], meta: { curatedFor, summary } }`
-- Currently returns mock data (TODO: integrate AI recommendation engine)
+- Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
+- Taste profile is generated via OpenAI (gpt-4o-mini) from the free-text description
+- Recommendations are still mock data (TODO: use tasteProfile to drive real recommendations)
+
+**Taste Profile Pipeline:**
+- `src/lib/openai.js` — OpenAI client singleton
+- `src/lib/taste-profile.js` — `generateTasteProfile(description)` sends user input to LLM, returns structured JSON
+- LLM extracts: recipient info, occasion, budget, interests, aesthetic, personality, constraints, gifting context
+- Uses low temperature (0.3) for consistent structured output
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)

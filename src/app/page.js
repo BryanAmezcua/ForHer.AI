@@ -223,7 +223,7 @@ export default function Home() {
             <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-6 py-4 border-b border-border/50">
               <button
                 onClick={handleStartOver}
-                className="flex items-center gap-2 text-sm text-stone-soft hover:text-foreground transition-colors"
+                className="flex items-center gap-2 text-sm text-stone-soft hover:text-foreground transition-colors cursor-pointer"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
                   <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -316,7 +316,7 @@ export default function Home() {
                 <div className="flex gap-3 justify-center flex-wrap">
                   <Button
                     variant="outline"
-                    className="text-stone-soft border-border bg-white/60 hover:bg-white rounded-xl px-6 py-5 font-semibold text-sm"
+                    className="text-stone-soft border-border bg-white/60 hover:bg-white rounded-xl px-6 py-5 font-semibold text-sm cursor-pointer"
                   >
                     Adjust Preferences
                   </Button>

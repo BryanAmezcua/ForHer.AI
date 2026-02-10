@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { generateTasteProfile } from '@/lib/taste-profile';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -48,11 +49,31 @@ const MOCK_META = {
 export async function POST(request) {
   const { description } = await request.json();
 
-  // TODO: Replace with actual AI recommendation engine
-  console.log('Received description:', description);
+  if (!description || !description.trim()) {
+    return NextResponse.json(
+      { error: 'Description is required' },
+      { status: 400 }
+    );
+  }
 
-  return NextResponse.json({
-    recommendations: MOCK_RECOMMENDATIONS,
-    meta: MOCK_META,
-  });
+  try {
+    const tasteProfile = await generateTasteProfile(description);
+
+    console.log('\n========== TASTE PROFILE ==========');
+    console.log(JSON.stringify(tasteProfile, null, 2));
+    console.log('====================================\n');
+
+    // TODO: Use tasteProfile to drive real recommendations
+    return NextResponse.json({
+      recommendations: MOCK_RECOMMENDATIONS,
+      meta: MOCK_META,
+      tasteProfile,
+    });
+  } catch (err) {
+    console.error('Taste profile generation failed:', err.message);
+    return NextResponse.json(
+      { error: 'Failed to generate taste profile' },
+      { status: 500 }
+    );
+  }
 }

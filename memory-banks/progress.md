@@ -22,7 +22,7 @@
 
 #### Backend (Minimal)
 - [x] Single API endpoint: POST `/api/recommendations`
-- [ ] AI processes free-text input to extract profile attributes
+- [x] AI processes free-text input to extract profile attributes (taste profile via OpenAI gpt-4o-mini)
 - [ ] Matches against curated gift database
 - [ ] Returns 3–5 ranked results with personalized reasoning
 - [ ] Real product data (URLs, images, prices)

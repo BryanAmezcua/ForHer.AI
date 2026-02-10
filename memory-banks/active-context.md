@@ -18,7 +18,7 @@
 - Fade-up and staggered card animations
 
 ### What's NOT Working / Mocked
-- **AI recommendation engine is not connected** — API route returns hardcoded mock data regardless of input
+- **Taste profile generates but doesn't drive recommendations yet** — profile is returned in API response + logged to console, but mock gift cards are still hardcoded
 - Mock data always returns the same 3 products (Hand-Thrown Earthware Set, Midnight Silk Robe, Sculptural Timepiece)
 - Mock meta always says "Curated for Sarah" regardless of user input
 - "Adjust Preferences" button in results view has no functionality
@@ -40,8 +40,12 @@
 ### Recent Changes
 - Scaffolding commit set up the Next.js project with shadcn/ui, Tailwind v4, and the full landing page UI
 - Original prototype exists as `gift-finder.jsx` (standalone React component with inline styles) — the `src/app/page.js` is the active, evolved version using Tailwind
+- **Integrated OpenAI (gpt-4o-mini)** for taste profile generation from user descriptions
+- Added `src/lib/openai.js` (client singleton) and `src/lib/taste-profile.js` (profile extraction)
+- API route now calls LLM, logs taste profile to console, and includes it in the response JSON
 
 ### Active Decisions / Open Questions
-- Which AI service to use for the recommendation engine (not yet decided)
+- **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction
 - Gift database approach: curated static DB vs. live product API vs. hybrid
 - Whether to use Mongoose/MongoDB for Phase 1 or defer all persistence to Phase 3
+- Next step: use the taste profile to drive actual gift recommendations instead of mock data
