@@ -203,3 +203,26 @@ Build the landing page and the core interaction loop.
 The best gift isn't the most expensive one. It's the one that makes her say "how did you know?"
 
 This app exists to close the gap between caring and knowing what to do about it.
+
+## Main color Scheme
+theme: {
+    extend: {
+        colors: {
+            "primary": "#8fa38a", // Soft Sage Green
+            "sage": "#8fa38a",
+            "taupe": "#a89a8e", // Warm Taupe
+            "clay": "#b68d7a",  // Muted Clay
+            "cream": "#fdfbf7", // Light airy cream
+            "stone-soft": "#7a7672",
+        },
+        fontFamily: {
+            "display": ["Manrope", "sans-serif"]
+        },
+        borderRadius: {
+            "DEFAULT": "0.5rem",
+            "lg": "1rem",
+            "xl": "1.5rem",
+            "full": "9999px"
+        },
+    },
+},
