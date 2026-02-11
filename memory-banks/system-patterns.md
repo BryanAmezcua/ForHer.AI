@@ -27,7 +27,8 @@ ForHer.AI/
 │   └── lib/
 │       ├── utils.js            # cn() utility (clsx + tailwind-merge)
 │       ├── openai.js           # OpenAI client singleton
-│       └── taste-profile.js    # generateTasteProfile() — LLM taste extraction
+│       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
+│       └── search-queries.js   # generateQueries() — Tavily search query generation
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
 ├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
@@ -58,6 +59,12 @@ The main page uses a `phase` state to switch between three views:
 - `src/lib/taste-profile.js` — `generateTasteProfile(description)` sends user input to LLM, returns structured JSON
 - LLM extracts: recipient info, occasion, budget, interests, aesthetic, personality, constraints, gifting context
 - Uses low temperature (0.3) for consistent structured output
+
+**Search Query Pipeline:**
+- `src/lib/search-queries.js` — `generateQueries(tasteProfile)` takes the taste profile object and generates 10 Tavily search queries
+- Each query has an intent: product (6), brand (2), validation (1), fallback/logistics (1)
+- Uses OpenAI JSON mode (`response_format: { type: 'json_object' }`) for guaranteed valid JSON
+- Respects budget, constraints, and avoidCategories from the taste profile
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)

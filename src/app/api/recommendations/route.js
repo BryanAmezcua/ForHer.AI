@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
+import { generateQueries } from '@/lib/search-queries';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -48,6 +49,7 @@ const MOCK_META = {
 
 export async function POST(request) {
   const { description } = await request.json();
+  console.log('raw description', description)
 
   if (!description || !description.trim()) {
     return NextResponse.json(
@@ -58,9 +60,13 @@ export async function POST(request) {
 
   try {
     const tasteProfile = await generateTasteProfile(description);
-
     console.log('\n========== TASTE PROFILE ==========');
     console.log(JSON.stringify(tasteProfile, null, 2));
+    console.log('====================================\n');
+
+    const giftQueries = await generateQueries(tasteProfile);
+    console.log('\n========== Gift Queries ==========');
+    console.log(JSON.stringify(giftQueries, null, 2));
     console.log('====================================\n');
 
     // TODO: Use tasteProfile to drive real recommendations
