@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
 import { generateQueries } from '@/lib/search-queries';
+import { executeQueries } from '@/lib/search-tavily';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -69,7 +70,13 @@ export async function POST(request) {
     console.log(JSON.stringify(giftQueries, null, 2));
     console.log('====================================\n');
 
-    // TODO: Use tasteProfile to drive real recommendations
+    const searchResults = await executeQueries(giftQueries);
+    console.log('\n========== SEARCH RESULTS ==========');
+    console.log(`Found ${searchResults.length} unique results`);
+    console.log(JSON.stringify(searchResults, null, 2));
+    console.log('=====================================\n');
+
+    // TODO: Use searchResults to drive real recommendations
     return NextResponse.json({
       recommendations: MOCK_RECOMMENDATIONS,
       meta: MOCK_META,

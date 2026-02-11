@@ -27,8 +27,10 @@ ForHer.AI/
 │   └── lib/
 │       ├── utils.js            # cn() utility (clsx + tailwind-merge)
 │       ├── openai.js           # OpenAI client singleton
+│       ├── tavily.js           # Tavily client singleton
 │       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
-│       └── search-queries.js   # generateQueries() — Tavily search query generation
+│       ├── search-queries.js   # generateQueries() — Tavily search query generation
+│       └── search-tavily.js    # executeQueries() — Runs queries against Tavily API
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
 ├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
@@ -65,6 +67,13 @@ The main page uses a `phase` state to switch between three views:
 - Each query has an intent: product (6), brand (2), validation (1), fallback/logistics (1)
 - Uses OpenAI JSON mode (`response_format: { type: 'json_object' }`) for guaranteed valid JSON
 - Respects budget, constraints, and avoidCategories from the taste profile
+
+**Tavily Search Execution:**
+- `src/lib/tavily.js` — Tavily client singleton (mirrors `openai.js` pattern), uses `TAVILY_API_KEY` env var
+- `src/lib/search-tavily.js` — `executeQueries(giftQueries)` runs all 10 queries in parallel via `Promise.all`
+- Per query: `tvly.search(query.q, { searchDepth: 'basic', maxResults: 3 })`
+- Results are deduplicated by URL (highest score wins), sorted by score descending
+- Returns array of `{ title, url, content, score }` objects
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)

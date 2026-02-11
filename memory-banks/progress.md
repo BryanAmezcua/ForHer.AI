@@ -23,6 +23,8 @@
 #### Backend (Minimal)
 - [x] Single API endpoint: POST `/api/recommendations`
 - [x] AI processes free-text input to extract profile attributes (taste profile via OpenAI gpt-4o-mini)
+- [x] Search query generation from taste profile (10 product-focused Tavily queries via gpt-4o-mini)
+- [x] Tavily search execution using generated queries
 - [ ] Matches against curated gift database
 - [ ] Returns 3–5 ranked results with personalized reasoning
 - [ ] Real product data (URLs, images, prices)
@@ -55,7 +57,9 @@
 - [ ] Seasonal curation
 
 ### Git History
-- `b723acf` — Scaffolding (current HEAD)
+- `eb8b388` — LLM generated taste profile
+- `ba8666c` — Memory-bank restructure
+- `b723acf` — Scaffolding
 - `21f740a` — Init
 
 ### Untracked Files
