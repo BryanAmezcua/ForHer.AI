@@ -18,35 +18,34 @@
 - Fade-up and staggered card animations
 
 ### What's NOT Working / Mocked
-- **Taste profile generates but doesn't drive recommendations yet** — profile is returned in API response + logged to console, but mock gift cards are still hardcoded
-- Mock data always returns the same 3 products (Hand-Thrown Earthware Set, Midnight Silk Robe, Sculptural Timepiece)
-- Mock meta always says "Curated for Sarah" regardless of user input
-- "Adjust Preferences" button in results view has no functionality
-- Gift card "View" buttons link to `#` (no real product URLs)
+- "Adjust Preferences" button in results view has no functionality (commented out)
 - No follow-up/refinement conversation loop
 - No input validation or contextual follow-up questions
 - Mongoose is installed but no database models or connections exist
+- Falls back to mock data when fewer than 1 complete candidate is found
 
 ### Known TODOs
-1. Replace mock recommendations with actual AI-powered recommendation engine
-2. Build or integrate a curated gift database (spec calls for 200–300 hand-picked products)
-3. Extract relationship, occasion, vibe, budget, interests, constraints from free-text input
-4. Return personalized reasoning per recommendation
-5. Implement refinement loop (Phase 2)
-6. Wire up "Adjust Preferences" button
-7. Add real product URLs and images
-8. Conversational follow-up for missing context (budget, timeline)
+1. Build or integrate a curated gift database (spec calls for 200–300 hand-picked products)
+2. Return personalized reasoning per recommendation (currently uses product description)
+3. Implement refinement loop (Phase 2)
+4. Wire up "Adjust Preferences" button
+5. Conversational follow-up for missing context (budget, timeline)
 
 ### Recent Changes
 - Scaffolding commit set up the Next.js project with shadcn/ui, Tailwind v4, and the full landing page UI
 - Original prototype exists as `gift-finder.jsx` (standalone React component with inline styles) — the `src/app/page.js` is the active, evolved version using Tailwind
 - **Integrated OpenAI (gpt-4o-mini)** for taste profile generation from user descriptions
 - Added `src/lib/openai.js` (client singleton) and `src/lib/taste-profile.js` (profile extraction)
-- API route now calls LLM, logs taste profile to console, and includes it in the response JSON
-- **Added search query generator** (`src/lib/search-queries.js`) — takes taste profile, generates 10 Tavily search queries with intent labels (product/brand/validation/fallback/logistics)
-- **Integrated Tavily SDK for search execution** — `src/lib/tavily.js` (client singleton) + `src/lib/search-tavily.js` (parallel query executor with dedup). Pipeline now: description → taste profile → search queries → Tavily search results (logged to console). Still returns mock recommendations.
-- **Added product extraction pipeline** — `src/lib/product-candidate.js` (ProductCandidate class) + `src/lib/extract-products.js` (scrapes product pages via Tavily extract API, merges with search data). Pipeline now: description → taste profile → search queries → search results → product candidates (with images, prices, descriptions). Still returns mock recommendations.
-- **Added URL filter** — `src/lib/filter-urls.js` (`filterProductUrls()`) rejects non-product URLs (category pages, blogs, gift guides, search pages) before sending to Tavily extract. Saves API tokens by only extracting actual product pages.
+- **Added search query generator** (`src/lib/search-queries.js`) — takes taste profile, generates 10 Tavily search queries with intent labels
+- **Integrated Tavily SDK for search execution** — `src/lib/tavily.js` + `src/lib/search-tavily.js` (parallel query executor with dedup)
+- **Added product extraction pipeline** — `src/lib/product-candidate.js` + `src/lib/extract-products.js` (scrapes product pages via Tavily extract API)
+- **Added URL filter** — `src/lib/filter-urls.js` rejects non-product URLs before sending to Tavily extract
+- **Added candidate deduplication** — `src/lib/dedupe-candidates.js` collapses duplicate products after extraction
+- **Added confidence-weighted reranking** — `src/lib/rerank-candidates.js` scores each candidate against the taste profile across 6 dimensions
+- **Wired real candidates into API response** — Top 3 complete candidates are mapped to card schema with match scores, matched attributes, and real product URLs. Falls back to mock data if insufficient candidates.
+- **Added taste profile pills** — `ProfilePill.jsx` renders category-colored capsule pills on gift cards showing which taste profile attributes matched (interests=sage, aesthetic=clay, personality=taupe)
+- **Extracted components from page.js** — `ProductImage.jsx`, `RichSummary.jsx`, `GiftCard.jsx`, `ProfilePill.jsx` are now separate files in `src/components/`. `page.js` imports them instead of defining inline.
+- **Match attribute tracking in reranker** — `collectMatchedAttributes()` identifies which specific taste profile terms (interests, aesthetic, personality, budget, context) matched each candidate's text
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction

@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { RichSummary } from '@/components/RichSummary';
+import { GiftCard } from '@/components/GiftCard';
 
 const PLACEHOLDER_EXAMPLES = [
   "My mom loves gardening and hates clutter. Her birthday is next week...",
@@ -18,71 +20,13 @@ const SOFT_PROMPTS = [
   "What's the occasion?",
 ];
 
-/* ── Renders summary text with **bold** markers ── */
-function RichSummary({ text }) {
-  if (!text) return null;
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-
-  return (
-    <p className="text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
-      {parts.map((part, i) => {
-        if (part.startsWith('**') && part.endsWith('**')) {
-          return (
-            <strong key={i} className="text-foreground font-semibold">
-              {part.slice(2, -2)}
-            </strong>
-          );
-        }
-        return part.split('\n').map((line, j, arr) => (
-          <span key={`${i}-${j}`}>
-            {line}
-            {j < arr.length - 1 && <br />}
-          </span>
-        ));
-      })}
-    </p>
-  );
-}
-
-/* ── Product image with fallback for external APIs ── */
-function ProductImage({ src, alt, fallbackColor }) {
-  const [status, setStatus] = useState('loading');
-
-  return (
-    <div
-      className="relative aspect-[4/3] overflow-hidden"
-      style={{ backgroundColor: fallbackColor || '#e8e2db' }}
-    >
-      {src && status !== 'error' && (
-        <img
-          src={src}
-          alt={alt}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
-            status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
-          onLoad={() => setStatus('loaded')}
-          onError={() => setStatus('error')}
-          loading="lazy"
-        />
-      )}
-      {status === 'loading' && src && (
-        <div className="absolute inset-0 animate-pulse bg-white/5" />
-      )}
-      {(!src || status === 'error') && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-white/20 text-5xl select-none">&#10022;</span>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export default function Home() {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [phase, setPhase] = useState('input');
   const [recommendations, setRecommendations] = useState([]);
   const [meta, setMeta] = useState(null);
+  const [tasteProfile, setTasteProfile] = useState(null);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -105,6 +49,7 @@ export default function Home() {
       const data = await res.json();
       setRecommendations(data.recommendations);
       setMeta(data.meta);
+      setTasteProfile(data.tasteProfile);
       setPhase('results');
     } catch (err) {
       console.error(err);
@@ -123,6 +68,7 @@ export default function Home() {
     setInput('');
     setRecommendations([]);
     setMeta(null);
+    setTasteProfile(null);
     setPhase('input');
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
@@ -252,60 +198,12 @@ export default function Home() {
               {/* ── Product cards ── */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
                 {recommendations.map((gift, i) => (
-                  <div
-                    key={i}
-                    className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_24px_rgba(0,0,0,0.04)] border border-border/30 flex flex-col animate-fade-up"
-                    style={{ animationDelay: `${0.1 + i * 0.12}s` }}
-                  >
-                    {/* Product image — handles any dimension/color from external APIs */}
-                    <ProductImage
-                      src={gift.imageUrl}
-                      alt={gift.name}
-                      fallbackColor={gift.imageBg}
-                    />
-
-                    {/* Card body */}
-                    <div className="p-5 flex flex-col flex-1">
-                      {/* Tag + price */}
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: gift.ctaColor }}
-                          />
-                          <span className="text-[10px] uppercase tracking-[0.12em] font-semibold text-stone-soft">
-                            {gift.tag}
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-foreground">
-                          {gift.price}
-                        </span>
-                      </div>
-
-                      {/* Product name */}
-                      <h3 className="text-[15px] font-bold text-foreground leading-snug mb-auto">
-                        {gift.name}
-                      </h3>
-
-                      {/* CTA button */}
-                      <button
-                        className="w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold transition-all duration-200 hover:brightness-[0.92] hover:shadow-md cursor-pointer"
-                        style={{ backgroundColor: gift.ctaColor }}
-                        onClick={() => {
-                          if (gift.url && gift.url !== '#') {
-                            window.open(gift.url, '_blank', 'noopener');
-                          }
-                        }}
-                      >
-                        {gift.ctaText}
-                      </button>
-                    </div>
-                  </div>
+                  <GiftCard key={i} gift={gift} index={i} />
                 ))}
               </div>
 
               {/* ── Bottom refinement section ── */}
-              <div className="bg-[#f0ebe5]/60 rounded-2xl p-8 sm:p-10 text-center max-w-[740px] mx-auto">
+              {/* <div className="bg-[#f0ebe5]/60 rounded-2xl p-8 sm:p-10 text-center max-w-[740px] mx-auto">
                 <h3 className="text-lg font-semibold text-foreground mb-2">
                   Not quite what you were looking for?
                 </h3>
@@ -321,7 +219,7 @@ export default function Home() {
                     Adjust Preferences
                   </Button>
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
         )}

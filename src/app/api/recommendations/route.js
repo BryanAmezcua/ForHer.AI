@@ -4,6 +4,8 @@ import { generateQueries } from '@/lib/search-queries';
 import { executeQueries } from '@/lib/search-tavily';
 import { extractProducts } from '@/lib/extract-products';
 import { filterProductUrls } from '@/lib/filter-urls';
+import { deduplicateCandidates } from '@/lib/dedupe-candidates';
+import { rerankCandidates } from '@/lib/rerank-candidates';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -80,9 +82,11 @@ export async function POST(request) {
 
     const productUrls = filterProductUrls(searchResults);
 
-    const candidates = await extractProducts(productUrls);
+    const rawCandidates = await extractProducts(productUrls);
+    const dedupedCandidates = deduplicateCandidates(rawCandidates);
+    const candidates = rerankCandidates(dedupedCandidates, tasteProfile);
     console.log('\n========== PRODUCT CANDIDATES ==========');
-    console.log(`${candidates.length} candidates (${candidates.filter(c => c.isComplete).length} complete, ${candidates.filter(c => c.hasPrice).length} with price)`);
+    console.log(`${candidates.length} candidates (${candidates.filter(c => c.isComplete).length} complete, ${candidates.filter(c => !!c.imageUrl).length} with images, ${candidates.filter(c => c.hasPrice).length} with price)`);
     console.log(JSON.stringify(candidates.map(c => ({
       title: c.title,
       source: c.source,
@@ -92,10 +96,42 @@ export async function POST(request) {
     })), null, 2));
     console.log('=========================================\n');
 
-    // TODO: Use candidates to drive real recommendations
+    // Build recommendations from top ranked candidates
+    const topCandidates = candidates.filter(c => c.isComplete).slice(0, 3);
+
+    let recommendations;
+    if (topCandidates.length >= 1) {
+      recommendations = topCandidates.map(c => ({
+        name: c.title,
+        price: c.price || 'Price unavailable',
+        why: c.description || '',
+        tag: c.relevanceScore >= 0.7 ? 'TOP MATCH' : 'GREAT FIND',
+        matchScore: Math.round(c.relevanceScore * 100),
+        matchedAttributes: (c.matchedAttributes || []).slice(0, 3),
+        ctaText: 'Explore Details',
+        ctaColor: '#a89a8e',
+        url: c.url,
+        imageUrl: c.imageUrl,
+        imageBg: '#e8e2db',
+      }));
+    } else {
+      // Graceful fallback to mock data
+      recommendations = MOCK_RECOMMENDATIONS;
+    }
+
+    // Build meta from taste profile
+    const curatedFor = tasteProfile.recipient?.name
+      || tasteProfile.recipient?.relationship
+      || 'her';
+    const meta = {
+      curatedFor,
+      summary: tasteProfile.summary
+        || `Based on what you told us, we found ${recommendations.length} gifts she'll love.`,
+    };
+
     return NextResponse.json({
-      recommendations: MOCK_RECOMMENDATIONS,
-      meta: MOCK_META,
+      recommendations,
+      meta,
       tasteProfile,
     });
   } catch (err) {

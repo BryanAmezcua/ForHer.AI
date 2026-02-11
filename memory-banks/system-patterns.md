@@ -19,6 +19,10 @@ ForHer.AI/
 │   │       └── recommendations/
 │   │           └── route.js    # POST endpoint for gift recommendations
 │   ├── components/
+│   │   ├── ProfilePill.jsx     # Taste-profile pill (category-colored capsule)
+│   │   ├── ProductImage.jsx    # Product image with loading/error fallback
+│   │   ├── RichSummary.jsx     # Renders summary text with **bold** markers
+│   │   ├── GiftCard.jsx        # Gift card component (image, pills, CTA)
 │   │   └── ui/
 │   │       ├── button.jsx      # shadcn Button component
 │   │       └── textarea.jsx    # shadcn Textarea component
@@ -33,7 +37,9 @@ ForHer.AI/
 │       ├── search-tavily.js    # executeQueries() — Runs queries against Tavily API
 │       ├── product-candidate.js # ProductCandidate class — normalized product data
 │       ├── filter-urls.js       # filterProductUrls() — Rejects non-product URLs before extraction
-│       └── extract-products.js  # extractProducts() — Scrapes URLs via Tavily extract
+│       ├── extract-products.js  # extractProducts() — Scrapes URLs via Tavily extract
+│       ├── dedupe-candidates.js # deduplicateCandidates() — Collapses duplicate product candidates
+│       └── rerank-candidates.js # rerankCandidates() — Confidence-weighted scoring against taste profile
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
 ├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
@@ -90,6 +96,23 @@ The main page uses a `phase` state to switch between three views:
 - Batches URLs (10 per batch), extracts in parallel, gracefully degrades on failure (creates candidate from search data alone)
 - Helpers: price regex extraction (contextual → decimal → whole dollar), image filtering (no logos/icons/svg/gif), domain extraction
 
+**Candidate Deduplication:**
+- `src/lib/dedupe-candidates.js` — `deduplicateCandidates(candidates)` collapses duplicate ProductCandidates after extraction
+- Deduplicates by canonicalized URL (strips tracking params like utm_*, fbclid, gclid; normalizes hostname; sorts query params) and by normalized title (strips store-name suffixes, removes non-alphanumeric chars)
+- When duplicates collide, keeps the most complete candidate (scored by isComplete, hasPrice, searchScore)
+- Runs in O(n) via two Maps (canonicalUrlMap, normalizedTitleMap)
+
+**Candidate Reranking (Confidence-Weighted):**
+- `src/lib/rerank-candidates.js` — `rerankCandidates(candidates, tasteProfile)` scores and sorts candidates by taste profile relevance
+- Scoring dimensions (each 0–1): budgetFit, interestMatch, aestheticMatch, searchRelevance, dataCompleteness, personalityMatch
+- **Confidence-weighted:** each dimension's base weight is scaled by how much signal the taste profile provides for that field (e.g. strict budget with both bounds → confidence 1.0 → full weight; no budget → confidence 0 → weight redistributed). Explicit preferences dominate; missing fields fade out.
+- Hard filter phase removes candidates matching `constraints[]` or `avoidCategories[]` entirely
+- Text matching uses naive stemming + phrase decomposition (no external NLP dependency)
+- Attaches `relevanceScore` (0–1) to each candidate for downstream use
+- Attaches `matchedAttributes` array to each candidate — `{ label, category }` for taste profile terms found in product text
+  - Categories: `interest`, `aesthetic`, `personality`, `budget`, `context`
+- Base weights: budget 0.25, interest 0.25, aesthetic 0.15, search 0.15, completeness 0.10, personality 0.10
+
 **ProductCandidate Schema:**
 ```js
 {
@@ -108,7 +131,7 @@ The main page uses a `phase` state to switch between three views:
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)
-- Custom inline components for domain-specific UI (ProductImage, RichSummary)
+- Extracted domain components in `src/components/` (ProductImage, RichSummary, GiftCard, ProfilePill)
 - Tailwind utility classes for all styling — no separate CSS modules
 
 **Recommendation Card Schema:**
@@ -118,10 +141,11 @@ Each recommendation object contains:
   name: string,       // Product name
   price: string,      // Display price
   why: string,        // Personalized reasoning
-  tag: string,        // Category label (e.g., "NEW MATCH", "TIMELESS CHOICE")
-  ctaText: string,    // Button text (e.g., "Explore Collection")
+  tag: string,        // Category label (e.g., "TOP MATCH", "GREAT FIND")
+  matchScore: number, // 0–100, derived from relevanceScore
+  matchedAttributes: [{ label: string, category: string }], // Up to 3 taste profile pills
+  ctaText: string,    // Button text (e.g., "Explore Details")
   ctaColor: string,   // Hex color for CTA button
-  giftReady: boolean, // Whether it arrives gift-wrapped
   url: string,        // Purchase link
   imageUrl: string,   // Product image URL
   imageBg: string,    // Fallback background color
@@ -144,6 +168,15 @@ Defined in `globals.css`:
 - `--color-cream: #fdfbf7` (Light airy cream — background)
 - `--color-stone-soft: #7a7672`
 - Font: Manrope via `next/font/google`
+
+**ProfilePill Color Mapping:**
+| Category | Background | Text |
+|----------|-----------|------|
+| `interest` | sage/15 | sage (#8fa38a) |
+| `aesthetic` | clay/15 | clay (#b68d7a) |
+| `personality` | taupe/15 | taupe (#a89a8e) |
+| `budget` | stone-soft/15 | stone-soft (#7a7672) |
+| `context` | muted | muted-foreground |
 
 ### Animations
 - `fade-up` — Entry animation for sections (opacity + translateY)
