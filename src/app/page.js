@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { RichSummary } from '@/components/RichSummary';
 import { GiftCard } from '@/components/GiftCard';
+import { GiftCardSkeleton } from '@/components/GiftCardSkeleton';
 
 const PLACEHOLDER_EXAMPLES = [
   "My mom loves gardening and hates clutter. Her birthday is next week...",
@@ -40,6 +41,9 @@ export default function Home() {
     if (!input.trim()) return;
     setPhase('thinking');
 
+    // Auto-transition to skeleton view after 3s while API continues in background
+    const skeletonTimer = setTimeout(() => setPhase('populating'), 5000);
+
     try {
       const res = await fetch('/api/recommendations', {
         method: 'POST',
@@ -47,11 +51,13 @@ export default function Home() {
         body: JSON.stringify({ description: input }),
       });
       const data = await res.json();
+      clearTimeout(skeletonTimer);
       setRecommendations(data.recommendations);
       setMeta(data.meta);
       setTasteProfile(data.tasteProfile);
       setPhase('results');
     } catch (err) {
+      clearTimeout(skeletonTimer);
       console.error(err);
       setPhase('input');
     }
@@ -159,6 +165,45 @@ export default function Home() {
                 Reading between the lines of what you told us
               </p>
             </section>
+          </div>
+        )}
+
+        {/* ==================== POPULATING PHASE ==================== */}
+        {phase === 'populating' && (
+          <div className="animate-fade-up">
+            {/* ── Nav bar (matches results layout) ── */}
+            <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-6 py-4 border-b border-border/50">
+              <div className="flex items-center gap-2 text-sm text-stone-soft">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
+                  <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="hidden sm:inline">New Search</span>
+              </div>
+              <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
+                Gift Finder &middot; For Her
+              </span>
+              <span className="text-lg opacity-40 text-taupe select-none">&#9825;</span>
+            </nav>
+
+            {/* ── Main content ── */}
+            <div className="max-w-[1000px] mx-auto px-6 pt-10 pb-16">
+              {/* Heading skeleton */}
+              <div className="text-center mb-12">
+                <div className="h-3 w-32 rounded-full bg-border/50 animate-pulse mx-auto mb-4" />
+                <div className="h-8 w-56 rounded-full bg-border/60 animate-pulse mx-auto mb-4" />
+                <div className="space-y-2 max-w-lg mx-auto">
+                  <div className="h-3.5 w-full rounded-full bg-border/40 animate-pulse" />
+                  <div className="h-3.5 w-3/4 rounded-full bg-border/40 animate-pulse mx-auto" />
+                </div>
+              </div>
+
+              {/* ── Skeleton cards ── */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+                {[0, 1, 2].map(i => (
+                  <GiftCardSkeleton key={i} index={i} />
+                ))}
+              </div>
+            </div>
           </div>
         )}
 
