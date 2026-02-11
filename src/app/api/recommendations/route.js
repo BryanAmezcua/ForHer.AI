@@ -4,6 +4,7 @@ import { generateQueries } from '@/lib/search-queries';
 import { executeQueries } from '@/lib/search-tavily';
 import { extractProducts } from '@/lib/extract-products';
 import { filterProductUrls } from '@/lib/filter-urls';
+import { classifyCandidates } from '@/lib/classify-candidates';
 import { deduplicateCandidates } from '@/lib/dedupe-candidates';
 import { rerankCandidates } from '@/lib/rerank-candidates';
 
@@ -81,8 +82,9 @@ export async function POST(request) {
     console.log('=====================================\n'); */
 
     const productUrls = filterProductUrls(searchResults);
+    const classified = classifyCandidates(productUrls);
 
-    const rawCandidates = await extractProducts(productUrls);
+    const rawCandidates = await extractProducts(classified);
     const dedupedCandidates = deduplicateCandidates(rawCandidates);
     const candidates = rerankCandidates(dedupedCandidates, tasteProfile);
     console.log('\n========== PRODUCT CANDIDATES ==========');
@@ -97,7 +99,7 @@ export async function POST(request) {
     console.log('=========================================\n');
 
     // Build recommendations from top ranked candidates
-    const topCandidates = candidates.filter(c => c.isComplete).slice(0, 3);
+    const topCandidates = candidates.filter(c => c.isComplete);
 
     let recommendations;
     if (topCandidates.length >= 1) {

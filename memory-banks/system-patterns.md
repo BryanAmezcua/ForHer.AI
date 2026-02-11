@@ -37,6 +37,7 @@ ForHer.AI/
 │       ├── search-tavily.js    # executeQueries() — Runs queries against Tavily API
 │       ├── product-candidate.js # ProductCandidate class — normalized product data
 │       ├── filter-urls.js       # filterProductUrls() — Rejects non-product URLs before extraction
+│       ├── classify-candidates.js # classifyCandidates() — Snippet-based page classifier (pre-extract)
 │       ├── extract-products.js  # extractProducts() — Scrapes URLs via Tavily extract
 │       ├── dedupe-candidates.js # deduplicateCandidates() — Collapses duplicate product candidates
 │       └── rerank-candidates.js # rerankCandidates() — Confidence-weighted scoring against taste profile
@@ -88,7 +89,14 @@ The main page uses a `phase` state to switch between three views:
 - `src/lib/filter-urls.js` — `filterProductUrls(searchResults)` rejects non-product URLs before extraction
 - Blocks category pages, blog posts, gift guides, search pages, editorial content, etc.
 - Matches against path segments (e.g. `/collections/`, `/blog/`) and query params (`?q=`, `?search=`)
-- Runs synchronously between `executeQueries()` and `extractProducts()` to save Tavily extract tokens
+- Runs synchronously between `executeQueries()` and `classifyCandidates()` to save Tavily extract tokens
+
+**Snippet-Based Page Classification:**
+- `src/lib/classify-candidates.js` — `classifyCandidates(searchResults)` scores search results by title + content signals
+- Runs between `filterProductUrls()` and `extractProducts()` — uses free Tavily search snippets to avoid expensive extract calls
+- Weighted signal scoring: positive signals (buy-path language, prices, product structure) vs. negative signals (listicle titles, editorial content, numbered lists, multiple prices)
+- Net score >= 0 → keep (benefit of the doubt for sparse snippets), < 0 → reject
+- Same input/output shape as filterProductUrls: `[{ title, url, content, score }]` → filtered subset
 
 **Product Extraction Pipeline:**
 - `src/lib/product-candidate.js` — `ProductCandidate` class, normalized data container for scraped products

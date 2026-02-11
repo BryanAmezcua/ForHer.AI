@@ -40,9 +40,10 @@
 - **Integrated Tavily SDK for search execution** — `src/lib/tavily.js` + `src/lib/search-tavily.js` (parallel query executor with dedup)
 - **Added product extraction pipeline** — `src/lib/product-candidate.js` + `src/lib/extract-products.js` (scrapes product pages via Tavily extract API)
 - **Added URL filter** — `src/lib/filter-urls.js` rejects non-product URLs before sending to Tavily extract
+- **Added snippet-based page classifier** — `src/lib/classify-candidates.js` scores search result titles + content for product-page signals (buy-path, prices, reviews) vs. anti-signals (listicle titles, editorial bylines, numbered lists). Runs between URL filter and extract to reduce wasted API calls.
 - **Added candidate deduplication** — `src/lib/dedupe-candidates.js` collapses duplicate products after extraction
 - **Added confidence-weighted reranking** — `src/lib/rerank-candidates.js` scores each candidate against the taste profile across 6 dimensions
-- **Wired real candidates into API response** — Top 3 complete candidates are mapped to card schema with match scores, matched attributes, and real product URLs. Falls back to mock data if insufficient candidates.
+- **Wired real candidates into API response** — All complete candidates are mapped to card schema with match scores, matched attributes, and real product URLs. Falls back to mock data if insufficient candidates.
 - **Added taste profile pills** — `ProfilePill.jsx` renders category-colored capsule pills on gift cards showing which taste profile attributes matched (interests=sage, aesthetic=clay, personality=taupe)
 - **Extracted components from page.js** — `ProductImage.jsx`, `RichSummary.jsx`, `GiftCard.jsx`, `ProfilePill.jsx` are now separate files in `src/components/`. `page.js` imports them instead of defining inline.
 - **Match attribute tracking in reranker** — `collectMatchedAttributes()` identifies which specific taste profile terms (interests, aesthetic, personality, budget, context) matched each candidate's text
