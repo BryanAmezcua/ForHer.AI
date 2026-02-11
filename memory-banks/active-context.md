@@ -45,6 +45,8 @@
 - API route now calls LLM, logs taste profile to console, and includes it in the response JSON
 - **Added search query generator** (`src/lib/search-queries.js`) — takes taste profile, generates 10 Tavily search queries with intent labels (product/brand/validation/fallback/logistics)
 - **Integrated Tavily SDK for search execution** — `src/lib/tavily.js` (client singleton) + `src/lib/search-tavily.js` (parallel query executor with dedup). Pipeline now: description → taste profile → search queries → Tavily search results (logged to console). Still returns mock recommendations.
+- **Added product extraction pipeline** — `src/lib/product-candidate.js` (ProductCandidate class) + `src/lib/extract-products.js` (scrapes product pages via Tavily extract API, merges with search data). Pipeline now: description → taste profile → search queries → search results → product candidates (with images, prices, descriptions). Still returns mock recommendations.
+- **Added URL filter** — `src/lib/filter-urls.js` (`filterProductUrls()`) rejects non-product URLs (category pages, blogs, gift guides, search pages) before sending to Tavily extract. Saves API tokens by only extracting actual product pages.
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction

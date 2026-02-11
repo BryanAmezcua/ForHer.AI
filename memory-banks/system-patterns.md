@@ -30,7 +30,10 @@ ForHer.AI/
 │       ├── tavily.js           # Tavily client singleton
 │       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
 │       ├── search-queries.js   # generateQueries() — Tavily search query generation
-│       └── search-tavily.js    # executeQueries() — Runs queries against Tavily API
+│       ├── search-tavily.js    # executeQueries() — Runs queries against Tavily API
+│       ├── product-candidate.js # ProductCandidate class — normalized product data
+│       ├── filter-urls.js       # filterProductUrls() — Rejects non-product URLs before extraction
+│       └── extract-products.js  # extractProducts() — Scrapes URLs via Tavily extract
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
 ├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
@@ -74,6 +77,34 @@ The main page uses a `phase` state to switch between three views:
 - Per query: `tvly.search(query.q, { searchDepth: 'basic', maxResults: 3 })`
 - Results are deduplicated by URL (highest score wins), sorted by score descending
 - Returns array of `{ title, url, content, score }` objects
+
+**URL Filtering:**
+- `src/lib/filter-urls.js` — `filterProductUrls(searchResults)` rejects non-product URLs before extraction
+- Blocks category pages, blog posts, gift guides, search pages, editorial content, etc.
+- Matches against path segments (e.g. `/collections/`, `/blog/`) and query params (`?q=`, `?search=`)
+- Runs synchronously between `executeQueries()` and `extractProducts()` to save Tavily extract tokens
+
+**Product Extraction Pipeline:**
+- `src/lib/product-candidate.js` — `ProductCandidate` class, normalized data container for scraped products
+- `src/lib/extract-products.js` — `extractProducts(searchResults)` takes Tavily search results, scrapes each URL via `tvly.extract()`, merges data into `ProductCandidate[]`
+- Batches URLs (10 per batch), extracts in parallel, gracefully degrades on failure (creates candidate from search data alone)
+- Helpers: price regex extraction (contextual → decimal → whole dollar), image filtering (no logos/icons/svg/gif), domain extraction
+
+**ProductCandidate Schema:**
+```js
+{
+  title: string,        // required — product name
+  url: string,          // required — product page URL
+  description: string,  // short product description (from search snippet or extracted)
+  price: string,        // display price, e.g. "$68.00"
+  priceValue: number,   // numeric price for budget filtering
+  imageUrl: string,     // product image URL (filtered for quality)
+  source: string,       // domain name, e.g. "etsy.com"
+  searchScore: number,  // Tavily relevance score from search
+  rawContent: string,   // full extracted page text (for future LLM ranking)
+}
+// Getters: isComplete (title + url + image + description), hasPrice
+```
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)

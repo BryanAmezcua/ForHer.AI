@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
 import { generateQueries } from '@/lib/search-queries';
 import { executeQueries } from '@/lib/search-tavily';
+import { extractProducts } from '@/lib/extract-products';
+import { filterProductUrls } from '@/lib/filter-urls';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -66,17 +68,31 @@ export async function POST(request) {
     console.log('====================================\n');
 
     const giftQueries = await generateQueries(tasteProfile);
-    console.log('\n========== Gift Queries ==========');
+    /* console.log('\n========== Gift Queries ==========');
     console.log(JSON.stringify(giftQueries, null, 2));
-    console.log('====================================\n');
+    console.log('====================================\n'); */
 
     const searchResults = await executeQueries(giftQueries);
-    console.log('\n========== SEARCH RESULTS ==========');
+    /* console.log('\n========== SEARCH RESULTS ==========');
     console.log(`Found ${searchResults.length} unique results`);
     console.log(JSON.stringify(searchResults, null, 2));
-    console.log('=====================================\n');
+    console.log('=====================================\n'); */
 
-    // TODO: Use searchResults to drive real recommendations
+    const productUrls = filterProductUrls(searchResults);
+
+    const candidates = await extractProducts(productUrls);
+    console.log('\n========== PRODUCT CANDIDATES ==========');
+    console.log(`${candidates.length} candidates (${candidates.filter(c => c.isComplete).length} complete, ${candidates.filter(c => c.hasPrice).length} with price)`);
+    console.log(JSON.stringify(candidates.map(c => ({
+      title: c.title,
+      source: c.source,
+      price: c.price,
+      hasImage: !!c.imageUrl,
+      isComplete: c.isComplete,
+    })), null, 2));
+    console.log('=========================================\n');
+
+    // TODO: Use candidates to drive real recommendations
     return NextResponse.json({
       recommendations: MOCK_RECOMMENDATIONS,
       meta: MOCK_META,

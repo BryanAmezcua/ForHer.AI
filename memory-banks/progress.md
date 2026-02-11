@@ -25,6 +25,7 @@
 - [x] AI processes free-text input to extract profile attributes (taste profile via OpenAI gpt-4o-mini)
 - [x] Search query generation from taste profile (10 product-focused Tavily queries via gpt-4o-mini)
 - [x] Tavily search execution using generated queries
+- [x] Product page extraction via Tavily extract API (images, prices, descriptions)
 - [ ] Matches against curated gift database
 - [ ] Returns 3–5 ranked results with personalized reasoning
 - [ ] Real product data (URLs, images, prices)
@@ -57,6 +58,9 @@
 - [ ] Seasonal curation
 
 ### Git History
+- `ae00f28` — Tavily Init
+- `4dc7f8b` — Search query - products only
+- `e2a0b99` — Search Queries Init
 - `eb8b388` — LLM generated taste profile
 - `ba8666c` — Memory-bank restructure
 - `b723acf` — Scaffolding
