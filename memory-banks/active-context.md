@@ -16,53 +16,32 @@
 - "Start over" functionality resets state
 - Custom color scheme applied via CSS variables
 - Fade-up and staggered card animations
+- Serper Shopping pipeline: query generation → search (cached) → dedup → prune to top 10
 
 ### What's NOT Working / Mocked
 - "Adjust Preferences" button in results view has no functionality (commented out)
 - No follow-up/refinement conversation loop
 - No input validation or contextual follow-up questions
-- Both deep research and standard mode currently return mock recommendations (standard pipeline commented out to save Tavily tokens)
-- Serper results are fetched and cached but not yet processed into product candidates
+- Pipeline returns mock recommendations — enrichment step not yet built
+- Serper results are fetched, cached, deduplicated, and pruned but not yet converted into ranked recommendations
 
 ### Known TODOs
-1. Build or integrate a curated gift database (spec calls for 200–300 hand-picked products)
-2. Return personalized reasoning per recommendation (currently uses product description)
+1. Build enrichment step to process pruned Serper products into real recommendations
+2. Return personalized reasoning per recommendation
 3. Implement refinement loop (Phase 2)
 4. Wire up "Adjust Preferences" button
 5. Conversational follow-up for missing context (budget, timeline)
 
 ### Recent Changes
-- Scaffolding commit set up the Next.js project with shadcn/ui, Tailwind v4, and the full landing page UI
-- Original prototype exists as `gift-finder.jsx` (standalone React component with inline styles) — the `src/app/page.js` is the active, evolved version using Tailwind
-- **Integrated OpenAI (gpt-4o-mini)** for taste profile generation from user descriptions
-- Added `src/lib/openai.js` (client singleton) and `src/lib/taste-profile.js` (profile extraction)
-- **Added search query generator** (`src/lib/search-queries.js`) — takes taste profile, generates 10 Tavily search queries with intent labels
-- **Integrated Tavily SDK for search execution** — `src/lib/tavily.js` + `src/lib/search-tavily.js` (parallel query executor with dedup)
-- **Added product extraction pipeline** — `src/lib/product-candidate.js` + `src/lib/extract-products.js` (scrapes product pages via Tavily extract API)
-- **Added URL filter** — `src/lib/filter-urls.js` rejects non-product URLs before sending to Tavily extract
-- **Added snippet-based page classifier** — `src/lib/classify-candidates.js` scores search result titles + content for product-page signals (buy-path, prices, reviews) vs. anti-signals (listicle titles, editorial bylines, numbered lists). Runs between URL filter and extract to reduce wasted API calls.
-- **Added candidate deduplication** — `src/lib/dedupe-candidates.js` collapses duplicate products after extraction
-- **Added confidence-weighted reranking** — `src/lib/rerank-candidates.js` scores each candidate against the taste profile across 6 dimensions
-- **Wired real candidates into API response** — All complete candidates are mapped to card schema with match scores, matched attributes, and real product URLs. Falls back to mock data if insufficient candidates.
-- **Added taste profile pills** — `ProfilePill.jsx` renders category-colored capsule pills on gift cards showing which taste profile attributes matched (interests=sage, aesthetic=clay, personality=taupe)
-- **Extracted components from page.js** — `ProductImage.jsx`, `RichSummary.jsx`, `GiftCard.jsx`, `ProfilePill.jsx` are now separate files in `src/components/`. `page.js` imports them instead of defining inline.
-- **Match attribute tracking in reranker** — `collectMatchedAttributes()` identifies which specific taste profile terms (interests, aesthetic, personality, budget, context) matched each candidate's text
-
-### Recent Changes
-- **Added Deep Research mode** — toggleable via switch in input UI (checked by default)
-  - `src/lib/search-queries-deep.js` generates 3 broad Google queries from taste profile
-  - `src/lib/search-serper.js` executes queries against Serper.dev Shopping API (10 results per query), logs results to console
-  - Frontend passes `deepResearch` flag in API request body
-- **Refactored standard pipeline** — `src/lib/standard-pipeline.js` wraps the full Tavily flow (query gen → search → filter → classify → extract → dedupe → rerank) into `runStandardPipeline(tasteProfile)`
-- **Cleaned up route.js** — now branches between deep research and standard mode based on flag; both paths return mock data for now
-- **Removed unused `generateQueriesSerp`** from search-queries.js
-- **Added MongoDB caching for Serper results** — `src/lib/mongoose.js` (connection singleton), `src/lib/models/shopping-cache.js` (Mongoose model with TTL index)
-  - Cache-first flow: normalize query → compute sha256 cache key → check MongoDB → cache hit returns stored results, cache miss calls Serper then saves
-  - 48-hour TTL via `expiresAt` field with MongoDB TTL index
-  - Query normalization: stopword removal + basic suffix stemming + alphabetical sort + dedup
+- **Deleted old Tavily pipeline** — Removed `standard-pipeline.js`, `search-queries.js`, `filter-urls.js`, `classify-candidates.js`, `extract-products.js`, `dedupe-candidates.js`, `rerank-candidates.js`, `product-candidate.js`
+- **Retained Tavily singleton files** — `tavily.js` (SDK init) and `search-tavily.js` (query executor) kept for planned enrichment step
+- **Removed Deep Research toggle** — Serper Shopping is now the only data fetching strategy (no toggle, no branching)
+- **Simplified route.js** — single linear pipeline: taste profile → deep queries → Serper search → dedup → prune → (enrichment TBD) → mock data
+- **Simplified page.js** — removed `deepResearch` state, toggle UI, and flag from API request
+- **Previously built:** Serper Shopping API integration with MongoDB caching (48h TTL), Jaccard-based deduplication with cluster size tracking, weighted pruning to top 10
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction
-- Gift database approach: curated static DB vs. live product API vs. hybrid
-- **MongoDB now in use** for Serper shopping cache (Phase 1); broader persistence still deferred to Phase 3
-- **Next step:** Process Serper results into product candidates (replace/augment Tavily pipeline in deep research mode)
+- **MongoDB in use** for Serper shopping cache; broader persistence deferred to Phase 3
+- **Tavily retained** for enrichment — will be used to scrape product pages from Serper results
+- **Next step:** Build enrichment step to convert pruned Serper products into ranked recommendations (replace mock data)

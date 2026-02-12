@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
-import { runStandardPipeline } from '@/lib/standard-pipeline';
 import { generateDeepQueries } from '@/lib/search-queries-deep';
 import { executeSerperQueries } from '@/lib/search-serper';
+import { dedupeSerperResults } from '@/lib/dedupe-serper';
+import { pruneSerperResults } from '@/lib/prune-serper';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -44,9 +45,8 @@ const MOCK_RECOMMENDATIONS = [
 ];
 
 export async function POST(request) {
-  const { description, deepResearch = true } = await request.json();
+  const { description } = await request.json();
   console.log('raw description', description);
-  console.log('deep research mode:', deepResearch);
 
   if (!description || !description.trim()) {
     return NextResponse.json(
@@ -58,46 +58,24 @@ export async function POST(request) {
   try {
     // Step 1: Generate taste profile from description
     const tasteProfile = await generateTasteProfile(description);
-    /* console.log('\n========== TASTE PROFILE ==========');
-    console.log(JSON.stringify(tasteProfile, null, 2));
-    console.log('====================================\n'); */
 
-    let recommendations;
+    // Step 2: Generate broad queries from taste profile
+    const deepQueries = await generateDeepQueries(tasteProfile);
+    console.log('\n========== DEEP RESEARCH QUERIES ==========');
+    console.log(JSON.stringify(deepQueries, null, 2));
+    console.log('============================================\n');
 
-    if (deepResearch) {
-      // Deep Research mode: broad queries via Serper
-      const deepQueries = await generateDeepQueries(tasteProfile);
-      console.log('\n========== DEEP RESEARCH QUERIES ==========');
-      console.log(JSON.stringify(deepQueries, null, 2));
-      console.log('============================================\n');
+    // Step 3: Execute queries via Serper Shopping API (cached)
+    const serperResults = await executeSerperQueries(deepQueries);
 
-      const serperResults = await executeSerperQueries(deepQueries);
+    // Step 4: Deduplicate across queries
+    const uniqueProducts = dedupeSerperResults(serperResults);
 
-      // TODO: Process serper results into product candidates
-      recommendations = MOCK_RECOMMENDATIONS;
-    } else {
-      // Standard mode: Tavily-based pipeline
-      // const candidates = await runStandardPipeline(tasteProfile);
-      // const topCandidates = candidates.filter(c => c.isComplete);
-      // if (topCandidates.length >= 1) {
-      //   recommendations = topCandidates.map(c => ({
-      //     name: c.title,
-      //     price: c.price || 'Price unavailable',
-      //     why: c.description || '',
-      //     tag: c.relevanceScore >= 0.7 ? 'TOP MATCH' : 'GREAT FIND',
-      //     matchScore: Math.round(c.relevanceScore * 100),
-      //     matchedAttributes: (c.matchedAttributes || []).slice(0, 3),
-      //     ctaText: 'Explore Details',
-      //     ctaColor: '#a89a8e',
-      //     url: c.url,
-      //     imageUrl: c.imageUrl,
-      //     imageBg: '#e8e2db',
-      //   }));
-      // } else {
-      //   recommendations = MOCK_RECOMMENDATIONS;
-      // }
-      recommendations = MOCK_RECOMMENDATIONS;
-    }
+    // Step 5: Prune to top 10 by relevance scoring
+    const prunedProducts = pruneSerperResults(uniqueProducts, tasteProfile);
+
+    // TODO: Enrich pruned products and build ranked recommendations
+    const recommendations = MOCK_RECOMMENDATIONS;
 
     // Build meta from taste profile
     const curatedFor = tasteProfile.recipient?.name
