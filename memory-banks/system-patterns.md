@@ -27,23 +27,24 @@ ForHer.AI/
 │   │       ├── button.jsx      # shadcn Button component
 │   │       └── textarea.jsx    # shadcn Textarea component
 │   └── lib/
-│       └── utils.js            # cn() utility (clsx + tailwind-merge)
-│   └── lib/
 │       ├── utils.js            # cn() utility (clsx + tailwind-merge)
 │       ├── openai.js           # OpenAI client singleton
+│       ├── mongoose.js         # MongoDB connection singleton (cached, targets serper-queries DB)
 │       ├── tavily.js           # Tavily client singleton
 │       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
 │       ├── search-queries.js   # generateQueries() — Tavily search query generation
 │       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries for deep research mode
 │       ├── search-tavily.js    # executeQueries() — Runs queries against Tavily API
-│       ├── search-serper.js    # executeSerperQueries() — Runs queries against Serper Google Search API
+│       ├── search-serper.js    # executeSerperQueries() — Serper Shopping API + MongoDB cache
 │       ├── standard-pipeline.js # runStandardPipeline() — Full Tavily pipeline in a single function call
 │       ├── product-candidate.js # ProductCandidate class — normalized product data
 │       ├── filter-urls.js       # filterProductUrls() — Rejects non-product URLs before extraction
 │       ├── classify-candidates.js # classifyCandidates() — Snippet-based page classifier (pre-extract)
 │       ├── extract-products.js  # extractProducts() — Scrapes URLs via Tavily extract
 │       ├── dedupe-candidates.js # deduplicateCandidates() — Collapses duplicate product candidates
-│       └── rerank-candidates.js # rerankCandidates() — Confidence-weighted scoring against taste profile
+│       ├── rerank-candidates.js # rerankCandidates() — Confidence-weighted scoring against taste profile
+│       └── models/
+│           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
 ├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
@@ -72,9 +73,17 @@ The main page uses a `phase` state to switch between three views:
 **Deep Research Mode:**
 - Toggled via a switch in the input phase UI (checked by default)
 - Generates 3 broad, natural Google-style queries via `generateDeepQueries()` (OpenAI gpt-4o-mini)
-- Executes queries against Serper.dev Google Search API (10 results per query)
-- Results logged to console for now; standard Tavily pipeline still runs for product data
-- Future: Serper results will replace/augment Tavily pipeline
+- Executes queries against Serper.dev Shopping API (10 results per query)
+- Results cached in MongoDB (`shopping-cache` collection) with 48-hour TTL to avoid redundant API calls
+- Cache key: `sha256("serper|US|" + normalizedQuery)` — queries are normalized (stopword removal + basic stemming + sorted) for dedup
+- Currently returns mock data while Serper integration is developed; standard pipeline commented out to save Tavily tokens
+
+**Serper Shopping Cache (MongoDB):**
+- Connection: `src/lib/mongoose.js` — cached singleton, database `serper-queries`
+- Model: `src/lib/models/shopping-cache.js` — collection `shopping-cache`
+- Document schema: `{ _id (cacheKey), query: { raw, normalized, locale }, provider, fetchedAt, expiresAt (TTL), results[] }`
+- Results stored as strings (price kept as `"$29.99"` to avoid type conversions)
+- TTL index on `expiresAt` — MongoDB auto-deletes expired documents
 
 **Taste Profile Pipeline:**
 - `src/lib/openai.js` — OpenAI client singleton

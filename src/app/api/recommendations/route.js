@@ -62,7 +62,7 @@ export async function POST(request) {
     console.log(JSON.stringify(tasteProfile, null, 2));
     console.log('====================================\n'); */
 
-    let candidates;
+    let recommendations;
 
     if (deepResearch) {
       // Deep Research mode: broad queries via Serper
@@ -73,34 +73,29 @@ export async function POST(request) {
 
       const serperResults = await executeSerperQueries(deepQueries);
 
-      // For now, fall back to standard pipeline for product results
-      // while Serper results are logged to console
-      candidates = await runStandardPipeline(tasteProfile);
+      // TODO: Process serper results into product candidates
+      recommendations = MOCK_RECOMMENDATIONS;
     } else {
       // Standard mode: Tavily-based pipeline
-      candidates = await runStandardPipeline(tasteProfile);
-    }
-
-    // Build recommendations from top ranked candidates
-    const topCandidates = candidates.filter(c => c.isComplete);
-
-    let recommendations;
-    if (topCandidates.length >= 1) {
-      recommendations = topCandidates.map(c => ({
-        name: c.title,
-        price: c.price || 'Price unavailable',
-        why: c.description || '',
-        tag: c.relevanceScore >= 0.7 ? 'TOP MATCH' : 'GREAT FIND',
-        matchScore: Math.round(c.relevanceScore * 100),
-        matchedAttributes: (c.matchedAttributes || []).slice(0, 3),
-        ctaText: 'Explore Details',
-        ctaColor: '#a89a8e',
-        url: c.url,
-        imageUrl: c.imageUrl,
-        imageBg: '#e8e2db',
-      }));
-    } else {
-      // Graceful fallback to mock data
+      // const candidates = await runStandardPipeline(tasteProfile);
+      // const topCandidates = candidates.filter(c => c.isComplete);
+      // if (topCandidates.length >= 1) {
+      //   recommendations = topCandidates.map(c => ({
+      //     name: c.title,
+      //     price: c.price || 'Price unavailable',
+      //     why: c.description || '',
+      //     tag: c.relevanceScore >= 0.7 ? 'TOP MATCH' : 'GREAT FIND',
+      //     matchScore: Math.round(c.relevanceScore * 100),
+      //     matchedAttributes: (c.matchedAttributes || []).slice(0, 3),
+      //     ctaText: 'Explore Details',
+      //     ctaColor: '#a89a8e',
+      //     url: c.url,
+      //     imageUrl: c.imageUrl,
+      //     imageBg: '#e8e2db',
+      //   }));
+      // } else {
+      //   recommendations = MOCK_RECOMMENDATIONS;
+      // }
       recommendations = MOCK_RECOMMENDATIONS;
     }
 

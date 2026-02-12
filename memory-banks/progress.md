@@ -26,6 +26,10 @@
 - [x] Search query generation from taste profile (10 product-focused Tavily queries via gpt-4o-mini)
 - [x] Tavily search execution using generated queries
 - [x] Product page extraction via Tavily extract API (images, prices, descriptions)
+- [x] Deep Research mode with Serper Shopping API (3 broad queries, 10 results each)
+- [x] MongoDB caching for Serper results (48h TTL, stopword+stemming normalization)
+- [x] Standard pipeline refactored into single function call (`runStandardPipeline`)
+- [x] Deep Research toggle in frontend UI (checked by default)
 - [ ] Matches against curated gift database
 - [ ] Returns 3–5 ranked results with personalized reasoning
 - [ ] Real product data (URLs, images, prices)

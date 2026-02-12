@@ -21,8 +21,8 @@
 - "Adjust Preferences" button in results view has no functionality (commented out)
 - No follow-up/refinement conversation loop
 - No input validation or contextual follow-up questions
-- Mongoose is installed but no database models or connections exist
-- Falls back to mock data when fewer than 1 complete candidate is found
+- Both deep research and standard mode currently return mock recommendations (standard pipeline commented out to save Tavily tokens)
+- Serper results are fetched and cached but not yet processed into product candidates
 
 ### Known TODOs
 1. Build or integrate a curated gift database (spec calls for 200–300 hand-picked products)
@@ -51,14 +51,18 @@
 ### Recent Changes
 - **Added Deep Research mode** — toggleable via switch in input UI (checked by default)
   - `src/lib/search-queries-deep.js` generates 3 broad Google queries from taste profile
-  - `src/lib/search-serper.js` executes queries against Serper.dev API (10 results per query), logs results to console
+  - `src/lib/search-serper.js` executes queries against Serper.dev Shopping API (10 results per query), logs results to console
   - Frontend passes `deepResearch` flag in API request body
 - **Refactored standard pipeline** — `src/lib/standard-pipeline.js` wraps the full Tavily flow (query gen → search → filter → classify → extract → dedupe → rerank) into `runStandardPipeline(tasteProfile)`
-- **Cleaned up route.js** — now branches between deep research and standard mode based on flag
+- **Cleaned up route.js** — now branches between deep research and standard mode based on flag; both paths return mock data for now
 - **Removed unused `generateQueriesSerp`** from search-queries.js
+- **Added MongoDB caching for Serper results** — `src/lib/mongoose.js` (connection singleton), `src/lib/models/shopping-cache.js` (Mongoose model with TTL index)
+  - Cache-first flow: normalize query → compute sha256 cache key → check MongoDB → cache hit returns stored results, cache miss calls Serper then saves
+  - 48-hour TTL via `expiresAt` field with MongoDB TTL index
+  - Query normalization: stopword removal + basic suffix stemming + alphabetical sort + dedup
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction
 - Gift database approach: curated static DB vs. live product API vs. hybrid
-- Whether to use Mongoose/MongoDB for Phase 1 or defer all persistence to Phase 3
+- **MongoDB now in use** for Serper shopping cache (Phase 1); broader persistence still deferred to Phase 3
 - **Next step:** Process Serper results into product candidates (replace/augment Tavily pipeline in deep research mode)

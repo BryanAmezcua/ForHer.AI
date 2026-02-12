@@ -42,7 +42,7 @@ npm run start  # Start production server
 - **App Router:** Using Next.js App Router (not Pages Router)
 - **Client-side main page:** `page.js` uses `'use client'` for interactive state management
 - **Remote images allowed:** `next.config.mjs` allows images from any HTTPS hostname
-- **Mongoose installed:** MongoDB/Mongoose is in dependencies but not yet wired up (future phase for persistence)
+- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`, targeting `serper-queries` database. Used for Serper shopping result caching. Connection string in `MONGODB_URI` env var.
 
 ### File Conventions
 - Components: `src/components/ui/*.jsx` (shadcn primitives)
