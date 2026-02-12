@@ -48,8 +48,17 @@
 - **Extracted components from page.js** — `ProductImage.jsx`, `RichSummary.jsx`, `GiftCard.jsx`, `ProfilePill.jsx` are now separate files in `src/components/`. `page.js` imports them instead of defining inline.
 - **Match attribute tracking in reranker** — `collectMatchedAttributes()` identifies which specific taste profile terms (interests, aesthetic, personality, budget, context) matched each candidate's text
 
+### Recent Changes
+- **Added Deep Research mode** — toggleable via switch in input UI (checked by default)
+  - `src/lib/search-queries-deep.js` generates 3 broad Google queries from taste profile
+  - `src/lib/search-serper.js` executes queries against Serper.dev API (10 results per query), logs results to console
+  - Frontend passes `deepResearch` flag in API request body
+- **Refactored standard pipeline** — `src/lib/standard-pipeline.js` wraps the full Tavily flow (query gen → search → filter → classify → extract → dedupe → rerank) into `runStandardPipeline(tasteProfile)`
+- **Cleaned up route.js** — now branches between deep research and standard mode based on flag
+- **Removed unused `generateQueriesSerp`** from search-queries.js
+
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction
 - Gift database approach: curated static DB vs. live product API vs. hybrid
 - Whether to use Mongoose/MongoDB for Phase 1 or defer all persistence to Phase 3
-- Next step: use the taste profile to drive actual gift recommendations instead of mock data
+- **Next step:** Process Serper results into product candidates (replace/augment Tavily pipeline in deep research mode)

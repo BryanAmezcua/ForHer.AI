@@ -34,7 +34,10 @@ ForHer.AI/
 │       ├── tavily.js           # Tavily client singleton
 │       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
 │       ├── search-queries.js   # generateQueries() — Tavily search query generation
+│       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries for deep research mode
 │       ├── search-tavily.js    # executeQueries() — Runs queries against Tavily API
+│       ├── search-serper.js    # executeSerperQueries() — Runs queries against Serper Google Search API
+│       ├── standard-pipeline.js # runStandardPipeline() — Full Tavily pipeline in a single function call
 │       ├── product-candidate.js # ProductCandidate class — normalized product data
 │       ├── filter-urls.js       # filterProductUrls() — Rejects non-product URLs before extraction
 │       ├── classify-candidates.js # classifyCandidates() — Snippet-based page classifier (pre-extract)
@@ -61,10 +64,17 @@ The main page uses a `phase` state to switch between three views:
 - `'results'` — Gift card grid with personalized heading
 
 **API Communication:**
-- Client POSTs `{ description }` to `/api/recommendations`
+- Client POSTs `{ description, deepResearch }` to `/api/recommendations`
+- `deepResearch` (boolean, default `true`) toggles between deep research mode (Serper) and standard mode (Tavily-only)
 - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
 - Taste profile is generated via OpenAI (gpt-4o-mini) from the free-text description
-- Recommendations are still mock data (TODO: use tasteProfile to drive real recommendations)
+
+**Deep Research Mode:**
+- Toggled via a switch in the input phase UI (checked by default)
+- Generates 3 broad, natural Google-style queries via `generateDeepQueries()` (OpenAI gpt-4o-mini)
+- Executes queries against Serper.dev Google Search API (10 results per query)
+- Results logged to console for now; standard Tavily pipeline still runs for product data
+- Future: Serper results will replace/augment Tavily pipeline
 
 **Taste Profile Pipeline:**
 - `src/lib/openai.js` — OpenAI client singleton

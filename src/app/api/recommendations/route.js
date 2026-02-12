@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
-import { generateQueries } from '@/lib/search-queries';
-import { executeQueries } from '@/lib/search-tavily';
-import { extractProducts } from '@/lib/extract-products';
-import { filterProductUrls } from '@/lib/filter-urls';
-import { classifyCandidates } from '@/lib/classify-candidates';
-import { deduplicateCandidates } from '@/lib/dedupe-candidates';
-import { rerankCandidates } from '@/lib/rerank-candidates';
+import { runStandardPipeline } from '@/lib/standard-pipeline';
+import { generateDeepQueries } from '@/lib/search-queries-deep';
+import { executeSerperQueries } from '@/lib/search-serper';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -47,15 +43,10 @@ const MOCK_RECOMMENDATIONS = [
   },
 ];
 
-const MOCK_META = {
-  curatedFor: 'Sarah',
-  summary:
-    "Based on her passion for **sustainable design** and her **love for quiet mornings**\nwe have handpicked these three exceptional treasures.",
-};
-
 export async function POST(request) {
-  const { description } = await request.json();
-  console.log('raw description', description)
+  const { description, deepResearch = true } = await request.json();
+  console.log('raw description', description);
+  console.log('deep research mode:', deepResearch);
 
   if (!description || !description.trim()) {
     return NextResponse.json(
@@ -65,38 +56,30 @@ export async function POST(request) {
   }
 
   try {
+    // Step 1: Generate taste profile from description
     const tasteProfile = await generateTasteProfile(description);
-    console.log('\n========== TASTE PROFILE ==========');
+    /* console.log('\n========== TASTE PROFILE ==========');
     console.log(JSON.stringify(tasteProfile, null, 2));
-    console.log('====================================\n');
-
-    const giftQueries = await generateQueries(tasteProfile);
-    /* console.log('\n========== Gift Queries ==========');
-    console.log(JSON.stringify(giftQueries, null, 2));
     console.log('====================================\n'); */
 
-    const searchResults = await executeQueries(giftQueries);
-    /* console.log('\n========== SEARCH RESULTS ==========');
-    console.log(`Found ${searchResults.length} unique results`);
-    console.log(JSON.stringify(searchResults, null, 2));
-    console.log('=====================================\n'); */
+    let candidates;
 
-    const productUrls = filterProductUrls(searchResults);
-    const classified = classifyCandidates(productUrls);
+    if (deepResearch) {
+      // Deep Research mode: broad queries via Serper
+      const deepQueries = await generateDeepQueries(tasteProfile);
+      console.log('\n========== DEEP RESEARCH QUERIES ==========');
+      console.log(JSON.stringify(deepQueries, null, 2));
+      console.log('============================================\n');
 
-    const rawCandidates = await extractProducts(classified);
-    const dedupedCandidates = deduplicateCandidates(rawCandidates);
-    const candidates = rerankCandidates(dedupedCandidates, tasteProfile);
-    console.log('\n========== PRODUCT CANDIDATES ==========');
-    console.log(`${candidates.length} candidates (${candidates.filter(c => c.isComplete).length} complete, ${candidates.filter(c => !!c.imageUrl).length} with images, ${candidates.filter(c => c.hasPrice).length} with price)`);
-    console.log(JSON.stringify(candidates.map(c => ({
-      title: c.title,
-      source: c.source,
-      price: c.price,
-      hasImage: !!c.imageUrl,
-      isComplete: c.isComplete,
-    })), null, 2));
-    console.log('=========================================\n');
+      const serperResults = await executeSerperQueries(deepQueries);
+
+      // For now, fall back to standard pipeline for product results
+      // while Serper results are logged to console
+      candidates = await runStandardPipeline(tasteProfile);
+    } else {
+      // Standard mode: Tavily-based pipeline
+      candidates = await runStandardPipeline(tasteProfile);
+    }
 
     // Build recommendations from top ranked candidates
     const topCandidates = candidates.filter(c => c.isComplete);
@@ -137,9 +120,9 @@ export async function POST(request) {
       tasteProfile,
     });
   } catch (err) {
-    console.error('Taste profile generation failed:', err.message);
+    console.error('Recommendation generation failed:', err.message);
     return NextResponse.json(
-      { error: 'Failed to generate taste profile' },
+      { error: 'Failed to generate recommendations' },
       { status: 500 }
     );
   }
