@@ -4,6 +4,7 @@ import { generateDeepQueries } from '@/lib/search-queries-deep';
 import { executeSerperQueries } from '@/lib/search-serper';
 import { dedupeSerperResults } from '@/lib/dedupe-serper';
 import { pruneSerperResults } from '@/lib/prune-serper';
+import { enrichProducts } from '@/lib/enrich-serper';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -74,8 +75,21 @@ export async function POST(request) {
     // Step 5: Prune to top 10 by relevance scoring
     const prunedProducts = pruneSerperResults(uniqueProducts, tasteProfile);
 
-    // TODO: Enrich pruned products and build ranked recommendations
-    const recommendations = MOCK_RECOMMENDATIONS;
+    // Step 6: Enrich with merchant URLs and descriptions via Tavily
+    const enrichedProducts = await enrichProducts(prunedProducts);
+
+    // Step 7: Build recommendations from enriched products
+    const recommendations = enrichedProducts.map(p => ({
+      name: p.title,
+      price: p.price || 'Price unavailable',
+      why: p.description || '',
+      tag: 'GREAT FIND',
+      ctaText: 'View Product',
+      ctaColor: '#a89a8e',
+      url: p.merchantUrl,
+      imageUrl: p.imageUrl,
+      imageBg: '#e8e2db',
+    }));
 
     // Build meta from taste profile
     const curatedFor = tasteProfile.recipient?.name

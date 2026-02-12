@@ -16,32 +16,32 @@
 - "Start over" functionality resets state
 - Custom color scheme applied via CSS variables
 - Fade-up and staggered card animations
-- Serper Shopping pipeline: query generation → search (cached) → dedup → prune to top 10
+- Full product pipeline: query generation → Serper search (cached) → dedup → prune → enrich (Tavily) → real recommendations
 
-### What's NOT Working / Mocked
+### What's NOT Working / Incomplete
 - "Adjust Preferences" button in results view has no functionality (commented out)
 - No follow-up/refinement conversation loop
 - No input validation or contextual follow-up questions
-- Pipeline returns mock recommendations — enrichment step not yet built
-- Serper results are fetched, cached, deduplicated, and pruned but not yet converted into ranked recommendations
+- Description quality from Tavily snippets may vary — might need LLM-generated "why this fits" later
+- No personalized reasoning per recommendation yet (uses raw Tavily snippet as description)
 
 ### Known TODOs
-1. Build enrichment step to process pruned Serper products into real recommendations
+1. Evaluate Tavily snippet quality — potentially replace with LLM-generated "why this fits" descriptions
 2. Return personalized reasoning per recommendation
 3. Implement refinement loop (Phase 2)
 4. Wire up "Adjust Preferences" button
 5. Conversational follow-up for missing context (budget, timeline)
 
 ### Recent Changes
-- **Deleted old Tavily pipeline** — Removed `standard-pipeline.js`, `search-queries.js`, `filter-urls.js`, `classify-candidates.js`, `extract-products.js`, `dedupe-candidates.js`, `rerank-candidates.js`, `product-candidate.js`
-- **Retained Tavily singleton files** — `tavily.js` (SDK init) and `search-tavily.js` (query executor) kept for planned enrichment step
-- **Removed Deep Research toggle** — Serper Shopping is now the only data fetching strategy (no toggle, no branching)
-- **Simplified route.js** — single linear pipeline: taste profile → deep queries → Serper search → dedup → prune → (enrichment TBD) → mock data
-- **Simplified page.js** — removed `deepResearch` state, toggle UI, and flag from API request
-- **Previously built:** Serper Shopping API integration with MongoDB caching (48h TTL), Jaccard-based deduplication with cluster size tracking, weighted pruning to top 10
+- **Built enrichment step** — `src/lib/enrich-serper.js` uses Tavily search (1 call per product, 10 total) to resolve merchant URLs and extract descriptions
+  - Searches `"[title] [source]"` with `maxResults: 1`, extracts URL + content snippet
+  - Falls back to Google Shopping link if Tavily returns no result
+- **Replaced mock data with real recommendations** — route.js now builds recommendations from enriched products (name, price, imageUrl from Serper; url from merchant; description from Tavily snippet)
+- **Previously:** Deleted old Tavily pipeline, removed Deep Research toggle, built Serper Shopping pipeline with caching/dedup/pruning
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction
 - **MongoDB in use** for Serper shopping cache; broader persistence deferred to Phase 3
-- **Tavily retained** for enrichment — will be used to scrape product pages from Serper results
-- **Next step:** Build enrichment step to convert pruned Serper products into ranked recommendations (replace mock data)
+- **Tavily now active** for enrichment (merchant URL resolution + descriptions)
+- **Description quality TBD** — Tavily snippets may need to be replaced with LLM-generated "why this fits" descriptions
+- **Next step:** Test end-to-end pipeline with real data, evaluate recommendation quality

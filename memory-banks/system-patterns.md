@@ -37,6 +37,7 @@ ForHer.AI/
 │       ├── search-serper.js    # executeSerperQueries() — Serper Shopping API + MongoDB cache
 │       ├── dedupe-serper.js    # dedupeSerperResults() — Jaccard + price clustering for shopping results
 │       ├── prune-serper.js     # pruneSerperResults() — Score + cut to top 10 products
+│       ├── enrich-serper.js   # enrichProducts() — Tavily search to resolve merchant URLs + descriptions
 │       └── models/
 │           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
@@ -65,12 +66,12 @@ The main page uses a `phase` state to switch between three views:
 
 **Product Discovery Pipeline (Serper Shopping):**
 - Single pipeline, no toggle — Serper Shopping is the only data fetching strategy
-- Flow: taste profile → `generateDeepQueries()` → `executeSerperQueries()` → `dedupeSerperResults()` → `pruneSerperResults()` → (enrichment TBD)
+- Flow: taste profile → `generateDeepQueries()` → `executeSerperQueries()` → `dedupeSerperResults()` → `pruneSerperResults()` → `enrichProducts()` → recommendations
 - Generates 3 broad, natural Google-style queries via OpenAI gpt-4o-mini
 - Executes queries against Serper.dev Shopping API (10 results per query)
 - Results cached in MongoDB with 48-hour TTL
 - Cache key: `sha256("serper|US|" + normalizedQuery)` — queries normalized (stopword removal + basic stemming + sorted)
-- Currently returns mock data while enrichment step is built
+- Pipeline now returns real product data (no more mock recommendations)
 
 **Serper Shopping Deduplication:**
 - `src/lib/dedupe-serper.js` — `dedupeSerperResults(serperResults)` collapses duplicate products across all queries
@@ -103,10 +104,14 @@ The main page uses a `phase` state to switch between three views:
 - LLM extracts: recipient info, occasion, budget, interests, aesthetic, personality, constraints, gifting context
 - Uses low temperature (0.3) for consistent structured output
 
-**Tavily (Retained for Enrichment):**
-- `src/lib/tavily.js` — Tavily client singleton, uses `TAVILY_API_KEY` env var
-- `src/lib/search-tavily.js` — `executeQueries(giftQueries)` runs queries in parallel via `Promise.all`
-- Not currently called in the pipeline — kept for planned enrichment step
+**Product Enrichment (Tavily):**
+- `src/lib/enrich-serper.js` — `enrichProducts(products)` resolves merchant URLs and descriptions for pruned products
+- Uses `src/lib/tavily.js` (SDK singleton) to run 1 Tavily search per product in parallel
+- Search query: `"[product title] [source/retailer]"` with `maxResults: 1`
+- From top result: extracts merchant URL (from `result.url`) and description (from `result.content`)
+- Fallback: if Tavily returns no result or errors, keeps the Google Shopping link and sets description to null
+- Cost: 10 Tavily API calls per user request (1 per pruned product)
+- `src/lib/search-tavily.js` — generic Tavily query executor, retained but not directly used in current pipeline
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)

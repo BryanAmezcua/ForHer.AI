@@ -152,13 +152,13 @@ export function dedupeSerperResults(serperResults) {
     return bestEntry.item;
   });
 
-  const dupes = allItems.length - winners.length;
+  /* const dupes = allItems.length - winners.length;
   console.log(`\n========== SERPER DEDUP ==========`);
   console.log(`${allItems.length} total items → ${winners.length} unique products (${dupes} duplicates removed)`);
   for (const winner of winners) {
     console.log(`  - ${winner.title} | ${winner.price} (cluster: ${winner.clusterSize})`);
   }
-  console.log(`==================================\n`);
+  console.log(`==================================\n`); */
 
   return winners;
 }

@@ -140,7 +140,7 @@ export async function executeSerperQueries(deepQueries) {
     queries.map(query => executeOneQuery(query.q))
   );
 
-  console.log('\n========== SERPER RESULTS ==========');
+  /* console.log('\n========== SERPER RESULTS ==========');
   for (const result of results) {
     const tag = result.fromCache ? ' (from cache)' : '';
     console.log(`\n--- Query: "${result.query}"${tag} ---`);
@@ -157,7 +157,7 @@ export async function executeSerperQueries(deepQueries) {
       console.log(`Image: ${item.imageUrl}`);
     }
   }
-  console.log('\n====================================\n');
+  console.log('\n====================================\n'); */
 
   return results;
 }

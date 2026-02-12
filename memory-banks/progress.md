@@ -29,9 +29,10 @@
 - [x] Serper shopping pruning (weighted scoring on 5 dimensions, top 10 cutoff)
 - [x] Deleted old Tavily pipeline (retained tavily.js + search-tavily.js for enrichment)
 - [x] Removed Deep Research toggle — Serper is now the sole pipeline
+- [x] Product enrichment via Tavily search (merchant URLs + descriptions, 10 calls per request)
+- [x] Real product data wired into recommendations (no more mock data)
+- [ ] Personalized "why this fits" reasoning per recommendation
 - [ ] Matches against curated gift database
-- [ ] Returns 3–5 ranked results with personalized reasoning
-- [ ] Real product data (URLs, images, prices)
 
 #### Polish & UX
 - [ ] Conversational follow-up for missing context
