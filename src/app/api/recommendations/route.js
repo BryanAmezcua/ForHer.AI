@@ -5,6 +5,7 @@ import { executeSerperQueries } from '@/lib/search-serper';
 import { dedupeSerperResults } from '@/lib/dedupe-serper';
 import { pruneSerperResults } from '@/lib/prune-serper';
 import { enrichProducts } from '@/lib/enrich-serper';
+import { generatePills } from '@/lib/generate-pills';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -79,7 +80,7 @@ export async function POST(request) {
     // Step 6: Enrich with merchant URLs and descriptions via Tavily
     const enrichedProducts = await enrichProducts(prunedProducts);
 
-    // Step 7: Build recommendations from enriched products
+    // Step 7: Build recommendations from enriched products + generate pills
     const recommendations = enrichedProducts.map(p => ({
       name: p.title,
       price: p.price || 'Price unavailable',
@@ -90,7 +91,25 @@ export async function POST(request) {
       url: p.merchantUrl,
       imageUrl: p.imageUrl,
       imageBg: '#252220',
+      matchedAttributes: generatePills(p, tasteProfile),
     }));
+
+    // Post-process: if ALL products got a budget pill, strip them (not differentiating)
+    const allHaveBudget = recommendations.every(r =>
+      r.matchedAttributes.some(a => a.category === 'budget')
+    );
+    if (allHaveBudget) {
+      for (const r of recommendations) {
+        r.matchedAttributes = r.matchedAttributes.filter(a => a.category !== 'budget');
+      }
+    }
+
+    // Log zero-pill products for quality monitoring
+    for (const r of recommendations) {
+      if (r.matchedAttributes.length === 0) {
+        console.warn(`⚠ Zero pills for "${r.name}" — matching may be too strict or taste profile too thin`);
+      }
+    }
 
     // Build meta from taste profile
     const curatedFor = tasteProfile.recipient?.name

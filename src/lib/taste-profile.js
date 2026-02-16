@@ -21,6 +21,9 @@ Analyze the description and return a JSON object with these fields:
     "flexibility": string | null    // "strict", "flexible", or "open"
   },
   "interests": string[],            // Hobbies, passions, things she loves (e.g. "gardening", "true crime podcasts", "fancy coffee")
+  "interestAliases": {              // Shopping-oriented synonym expansion for each interest
+    "[interest]": string[]          // ~10 tokens per interest — product terms, synonyms, and related words likely to appear in shopping titles
+  },
   "aesthetic": {
     "style": string[],              // Style descriptors (e.g. "minimalist", "bohemian", "classic", "cozy")
     "avoids": string[]              // Things she dislikes or would not want
@@ -53,6 +56,7 @@ Rules:
 - If no budget is mentioned, leave it null — don't guess.
 - Be specific with interests. "Cooking" is fine, but "baking sourdough" is better if the description supports it.
 - Infer personality and aesthetic from context clues, not just explicit statements.
+- For interestAliases: generate ~10 shopping-relevant tokens per interest. These should be product names, brand-neutral terms, synonyms, and related words that would appear in Google Shopping titles. Example: "fancy coffee" → ["espresso", "pour-over", "latte", "barista", "grinder", "french press", "cold brew", "drip", "moka", "chemex"]. Focus on commercial/product language, not abstract concepts. Every interest in the interests array must have a corresponding entry in interestAliases.
 
 Clarification rules:
 - Return clarification as null if the description provides enough signal for quality recommendations (has specific interests AND at least one of: budget range, occasion, or clear relationship context).
@@ -73,7 +77,7 @@ export async function generateTasteProfile(description) {
       { role: 'user', content: description },
     ],
     temperature: 0.3,
-    max_tokens: 1000,
+    max_tokens: 1500,
   });
 
   const content = response.choices[0].message.content.trim();

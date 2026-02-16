@@ -31,7 +31,7 @@
 - [x] Removed Deep Research toggle — Serper is now the sole pipeline
 - [x] Product enrichment via Tavily search (merchant URLs + descriptions, 10 calls per request)
 - [x] Real product data wired into recommendations (no more mock data)
-- [ ] Personalized "why this fits" reasoning per recommendation
+- [x] "Why this fits" pills per product (up to 3 per card — interest, aesthetic, quality, budget, personality)
 - [ ] Matches against curated gift database
 
 #### Polish & UX
@@ -60,15 +60,3 @@
 - [ ] Expanded product database
 - [ ] Affiliate monetization
 - [ ] Seasonal curation
-
-### Git History
-- `ae00f28` — Tavily Init
-- `4dc7f8b` — Search query - products only
-- `e2a0b99` — Search Queries Init
-- `eb8b388` — LLM generated taste profile
-- `ba8666c` — Memory-bank restructure
-- `b723acf` — Scaffolding
-- `21f740a` — Init
-
-### Untracked Files
-- `memory-banks/` — Context tracking files (this system)

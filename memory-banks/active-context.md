@@ -25,13 +25,11 @@
 - "Adjust Preferences" button in results view has no functionality (commented out)
 - No follow-up/refinement conversation loop
 - Description quality from Tavily snippets may vary — might need LLM-generated "why this fits" later
-- No personalized reasoning per recommendation yet (uses raw Tavily snippet as description)
 
 ### Known TODOs
 1. Evaluate Tavily snippet quality — potentially replace with LLM-generated "why this fits" descriptions
-2. Return personalized reasoning per recommendation
-3. Implement refinement loop (Phase 2)
-4. Wire up "Adjust Preferences" button
+2. Implement refinement loop (Phase 2)
+3. Wire up "Adjust Preferences" button
 
 ### Recent Changes
 - **"Whiskey Lounge" dark theme overhaul** — Replaced light cream/sage/taupe palette with dark warm palette. New tokens: copper (#c8956c), warm-gray (#8a8380), warm-gray-light (#a09890), surface (#252220). Permanently dark (no light mode). All CSS variables, hardcoded colors in page.js, GiftCard, GiftCardSkeleton, ProfilePill, ProductImage, and recommendations route updated. Hearts removed, spinning sparkle replaced with pulsing ring.

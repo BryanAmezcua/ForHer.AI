@@ -38,7 +38,8 @@ ForHer.AI/
 │       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries
 │       ├── search-serper.js    # executeSerperQueries() — Serper Shopping API + MongoDB cache
 │       ├── dedupe-serper.js    # dedupeSerperResults() — Jaccard + price clustering for shopping results
-│       ├── prune-serper.js     # pruneSerperResults() — Score + cut to top 10 products
+│       ├── prune-serper.js     # pruneSerperResults() — Score + cut to top 5 products (attaches _matchMeta)
+│       ├── generate-pills.js  # generatePills() — Up to 3 "why this fits" pills per product
 │       ├── enrich-serper.js   # enrichProducts() — Tavily search to resolve merchant URLs + descriptions
 │       └── models/
 │           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
@@ -94,7 +95,7 @@ The main page uses a `phase` state to switch between five views:
 - Weighted scoring: interest relevance (35%), budget fit (25%), cluster size (20%), price sanity (10%), data completeness (10%)
 - Budget fit: 1.0 if within range, 0.5 if within 20% grace zone, 0 if way outside
 - Cluster size: 3+ = 1.0, 2 = 0.5, 1 = 0.2
-- Interest relevance: token overlap between product title and taste profile interests array
+- Interest relevance: token overlap between product title and taste profile interests array (with alias fallback from interestAliases)
 - Sorts descending, returns top 10
 - Runs after `dedupeSerperResults()`, before enrichment
 
@@ -108,7 +109,7 @@ The main page uses a `phase` state to switch between five views:
 **Taste Profile Pipeline:**
 - `src/lib/openai.js` — OpenAI client singleton
 - `src/lib/taste-profile.js` — `generateTasteProfile(description)` sends user input to LLM, returns structured JSON
-- LLM extracts: recipient info, occasion, budget, interests, aesthetic, personality, constraints, gifting context
+- LLM extracts: recipient info, occasion, budget, interests, interestAliases (~10 shopping tokens per interest), aesthetic, personality, constraints, gifting context
 - Uses low temperature (0.3) for consistent structured output
 
 **Product Enrichment (Tavily):**

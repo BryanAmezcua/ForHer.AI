@@ -1,5 +1,14 @@
 const MAX_RESULTS = 5;
 const MIN_PRICE = 5; // Items under $5 are probably not real gifts
+const MIN_TOKEN_LENGTH = 3;
+
+const STOPWORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+  'of', 'with', 'by', 'from', 'is', 'it', 'its', 'as', 'be', 'was',
+  'are', 'been', 'has', 'had', 'do', 'did', 'not', 'no', 'so', 'if',
+  'she', 'her', 'he', 'his', 'they', 'them', 'we', 'us', 'my', 'our',
+  'set', 'new', 'all', 'get', 'got', 'can', 'one', 'two', 'also',
+]);
 
 // ── Parse price string to number ──
 function parsePrice(priceStr) {
@@ -18,24 +27,73 @@ function tokenize(text) {
     .filter(Boolean);
 }
 
-// ── Count how many interest tokens appear in the product title ──
-function interestOverlap(titleTokens, interests) {
-  if (!interests || interests.length === 0) return 0;
+// ── Filter out stopwords and short tokens ──
+function meaningfulTokens(tokens) {
+  return tokens.filter(t => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t));
+}
 
-  const titleSet = new Set(titleTokens);
-  let hits = 0;
+// ── Return { count, matched } for interest overlap with title ──
+// Checks raw interest tokens first, then falls back to alias tokens
+function interestOverlap(titleTokens, interests, interestAliases) {
+  if (!interests || interests.length === 0) return { count: 0, matched: [] };
+
+  const titleSet = new Set(meaningfulTokens(titleTokens));
+  let count = 0;
+  const matched = [];
 
   for (const interest of interests) {
-    const interestTokens = tokenize(interest);
+    // Try raw interest tokens first
+    const interestTokens = meaningfulTokens(tokenize(interest));
+    let hit = false;
     for (const token of interestTokens) {
       if (titleSet.has(token)) {
-        hits++;
-        break; // count each interest once
+        hit = true;
+        break;
+      }
+    }
+
+    // Fall back to alias tokens if no direct hit
+    if (!hit && interestAliases) {
+      const aliases = interestAliases[interest] || [];
+      for (const alias of aliases) {
+        const aliasTokens = meaningfulTokens(tokenize(alias));
+        for (const token of aliasTokens) {
+          if (titleSet.has(token)) {
+            hit = true;
+            break;
+          }
+        }
+        if (hit) break;
+      }
+    }
+
+    if (hit) {
+      count++;
+      matched.push(interest);
+    }
+  }
+
+  return { count, matched };
+}
+
+// ── Return which aesthetic style terms overlap with the title ──
+function aestheticOverlap(titleTokens, aesthetic) {
+  if (!aesthetic || !aesthetic.style || aesthetic.style.length === 0) return [];
+
+  const titleSet = new Set(meaningfulTokens(titleTokens));
+  const matched = [];
+
+  for (const style of aesthetic.style) {
+    const styleTokens = meaningfulTokens(tokenize(style));
+    for (const token of styleTokens) {
+      if (titleSet.has(token)) {
+        matched.push(style);
+        break;
       }
     }
   }
 
-  return hits;
+  return matched;
 }
 
 // ── Check if price falls within budget range ──
@@ -67,7 +125,7 @@ function budgetFitScore(priceValue, budget) {
  * @returns {Array} Top 10 pruned products
  */
 export function pruneSerperResults(products, tasteProfile) {
-  const { budget, interests } = tasteProfile;
+  const { budget, interests, interestAliases, aesthetic } = tasteProfile;
 
   // Hard filter: drop items with no image
   const withImages = products.filter(p => !!p.imageUrl);
@@ -87,7 +145,8 @@ export function pruneSerperResults(products, tasteProfile) {
     const clusterScore = clusterSize >= 3 ? 1.0 : clusterSize === 2 ? 0.5 : 0.2;
 
     // 3. Interest relevance — token overlap with interests (weight 35%)
-    const interestHits = interestOverlap(titleTokens, interests);
+    const { count: interestHits, matched: matchedInterests } = interestOverlap(titleTokens, interests, interestAliases);
+    const matchedAesthetics = aestheticOverlap(titleTokens, aesthetic);
     const interestScore = interests && interests.length > 0
       ? Math.min(interestHits / Math.min(interests.length, 3), 1.0)
       : 0.5; // no interests provided = neutral
@@ -109,7 +168,10 @@ export function pruneSerperResults(products, tasteProfile) {
       priceScore * 0.10 +
       completenessScore * 0.10;
 
-    return { product, total, budgetFit, clusterScore, interestScore, priceScore, completenessScore };
+    return {
+      product, total, budgetFit, clusterScore, interestScore, priceScore, completenessScore,
+      matchedInterests, matchedAesthetics, priceValue,
+    };
   });
 
   // Sort descending by score, take top N
@@ -126,5 +188,8 @@ export function pruneSerperResults(products, tasteProfile) {
   }
   console.log(`==================================\n`);
 
-  return pruned.map(({ product }) => product);
+  return pruned.map(({ product, matchedInterests, matchedAesthetics, budgetFit, priceValue }) => ({
+    ...product,
+    _matchMeta: { matchedInterests, matchedAesthetics, budgetFit, priceValue },
+  }));
 }
