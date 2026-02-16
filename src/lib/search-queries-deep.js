@@ -1,4 +1,4 @@
-import openai from './openai';
+import openai, { MODEL } from './openai';
 
 const DEEP_QUERY_PROMPT = `You are generating broad Google search queries for a gift recommendation system.
 You will receive a structured taste profile JSON with fields like recipient, occasion, budget, interests, aesthetic, personality, constraints, and giftingContext.
@@ -41,7 +41,7 @@ Rules:
 
 export async function generateDeepQueries(tasteProfile) {
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: MODEL,
     messages: [
       { role: 'system', content: DEEP_QUERY_PROMPT },
       { role: 'user', content: JSON.stringify(tasteProfile) },

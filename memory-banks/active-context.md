@@ -39,11 +39,11 @@
 - **`/api/recommendations` accepts pre-built taste profile** — Skips `generateTasteProfile()` when `tasteProfile` is provided in request body
 - **Reduced to 5 results** — `MAX_RESULTS` in prune-serper.js changed from 10 to 5; skeleton count updated to match
 - **Mobile-first clarifying UI** — Pills stack vertically on mobile (`flex-col`), horizontal on `sm:` breakpoint; comfortable touch targets (`py-3`); responsive padding throughout
-- **Pill generation refactored** — Replaced token-matching pill system with LLM-generated pills (gpt-4o-mini). One call per request, runs in parallel with Tavily enrichment. Produces 1-2 pills per product with categories (interest, aesthetic, personality, context) for ProfilePill color mapping. Pruner simplified: `_matchMeta` removed, `aestheticOverlap` removed, `interestOverlap` returns count only (aliases still used for scoring).
+- **Pill generation refactored** — Replaced token-matching pill system with LLM-generated pills. One call per request, runs in parallel with Tavily enrichment. Produces 1-2 pills per product with categories (interest, aesthetic, personality, context) for ProfilePill color mapping. Pruner simplified: `_matchMeta` removed, `aestheticOverlap` removed, `interestOverlap` returns count only (aliases still used for scoring).
 - **Previously:** Built enrichment step, replaced mock data, built Serper Shopping pipeline with caching/dedup/pruning
 
 ### Active Decisions / Open Questions
-- **AI service decided:** OpenAI gpt-4o-mini for taste profile extraction + clarification generation
+- **AI service decided:** OpenAI for all LLM calls (model configured in `src/lib/openai.js`)
 - **MongoDB in use** for Serper shopping cache; broader persistence deferred to Phase 3
 - **Tavily now active** for enrichment (merchant URL resolution + descriptions, 5 calls per request now)
 - **Description quality TBD** — Tavily snippets may need to be replaced with LLM-generated "why this fits" descriptions

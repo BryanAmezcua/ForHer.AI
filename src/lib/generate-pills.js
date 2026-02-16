@@ -1,4 +1,4 @@
-import openai from './openai';
+import openai, { MODEL } from './openai';
 
 const PILL_PROMPT = `You are a gift recommendation assistant. Given a taste profile describing a gift recipient and a list of products selected for her, generate 1-2 short pill labels per product that explain WHY each product fits her specifically.
 
@@ -41,7 +41,7 @@ export async function generatePillLabels(products, tasteProfile) {
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: MODEL,
       messages: [
         { role: 'system', content: PILL_PROMPT },
         { role: 'user', content: userMessage },

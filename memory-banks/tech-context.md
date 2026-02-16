@@ -8,7 +8,7 @@
 | Styling      | Tailwind CSS                   | ^4.1.18  |
 | Components   | shadcn/ui (new-york, JSX)      | ^3.8.4   |
 | Icons        | lucide-react                   | ^0.563.0 |
-| LLM          | OpenAI (gpt-4o-mini)           | ^4.x     |
+| LLM          | OpenAI (model set via `MODEL` in `src/lib/openai.js`) | ^4.x     |
 | Database     | Mongoose (MongoDB ODM)         | ^8.23.0  |
 | CSS          | PostCSS + @tailwindcss/postcss | ^8.5.6   |
 | Animations   | tw-animate-css                 | ^1.4.0   |

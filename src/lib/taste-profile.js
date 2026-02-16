@@ -1,4 +1,4 @@
-import openai from './openai';
+import openai, { MODEL } from './openai';
 
 const TASTE_PROFILE_PROMPT = `You are a gift-finding assistant. Given a free-text description of a woman written by someone shopping for her, extract a structured taste profile.
 
@@ -71,7 +71,7 @@ Clarification rules:
 
 export async function generateTasteProfile(description) {
   const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
+    model: MODEL,
     messages: [
       { role: 'system', content: TASTE_PROFILE_PROMPT },
       { role: 'user', content: description },

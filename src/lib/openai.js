@@ -4,4 +4,6 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+export const MODEL = 'gpt-4o-mini';
+
 export default openai;

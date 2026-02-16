@@ -22,7 +22,7 @@
 
 #### Backend (Minimal)
 - [x] Single API endpoint: POST `/api/recommendations`
-- [x] AI processes free-text input to extract profile attributes (taste profile via OpenAI gpt-4o-mini)
+- [x] AI processes free-text input to extract profile attributes (taste profile via OpenAI, model configured in `src/lib/openai.js`)
 - [x] Serper Shopping API integration (3 broad queries, 10 results each)
 - [x] MongoDB caching for Serper results (48h TTL, stopword+stemming normalization)
 - [x] Serper shopping deduplication (Jaccard similarity + price clustering, cluster size tracking)
