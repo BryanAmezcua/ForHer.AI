@@ -34,7 +34,16 @@ Analyze the description and return a JSON object with these fields:
     "previousGifts": string[],      // Anything mentioned as already given or she already owns
     "avoidCategories": string[],    // Categories to skip (e.g. "candles", "gift cards")
     "leanToward": string | null     // If the user hinted at a direction (e.g. "something experiential", "something she'd never buy herself")
-  }
+  },
+  "clarification": {                // ONE follow-up question if the description is too vague for quality results
+    "question": string,             // Warm, conversational question (e.g. "Any rough budget in mind so we don't overshoot?")
+    "options": [                    // Exactly 3 quick-answer options
+      {
+        "label": string,            // Short display text (2-5 words)
+        "patch": object             // Partial taste profile fields to merge (e.g. { "budget": { "min": 50, "max": 100 } })
+      }
+    ]
+  } | null                          // null if description is already rich enough
 }
 
 Rules:
@@ -44,6 +53,16 @@ Rules:
 - If no budget is mentioned, leave it null — don't guess.
 - Be specific with interests. "Cooking" is fine, but "baking sourdough" is better if the description supports it.
 - Infer personality and aesthetic from context clues, not just explicit statements.
+
+Clarification rules:
+- Return clarification as null if the description provides enough signal for quality recommendations (has specific interests AND at least one of: budget range, occasion, or clear relationship context).
+- If the description IS vague or missing high-impact context, return the single highest-ROI follow-up question.
+- Priority order for what to ask about: (1) budget — most impact on filtering, (2) specific interests/hobbies — most impact on search quality, (3) occasion — affects gift appropriateness.
+- The question must be warm and conversational, not robotic. Write it like a friend would ask.
+- Return exactly 3 options. Each option's "label" is short display text. Each option's "patch" is a partial object matching this profile's schema that will be merged in.
+- Budget patch example: { "budget": { "min": 50, "max": 100, "flexibility": "flexible" } }
+- Interest patch example: { "interests": ["cooking", "baking"] } (these get MERGED with existing interests)
+- Occasion patch example: { "occasion": { "event": "birthday" } }
 - Return ONLY the JSON object, no markdown fencing, no explanation.`;
 
 export async function generateTasteProfile(description) {

@@ -13,11 +13,11 @@ const MOCK_RECOMMENDATIONS = [
     why: 'A handmade ceramic dripper and mug set from a small Portland studio. Turns her morning coffee into a ritual, not a task.',
     tag: 'NEW MATCH',
     ctaText: 'Explore Collection',
-    ctaColor: '#8fa38a',
+    ctaColor: '#c8956c',
     giftReady: true,
     url: '#',
     imageUrl: 'https://images.unsplash.com/photo-1565193566173-7a0ee3dbe261?w=600&h=450&fit=crop&q=80',
-    imageBg: '#c8c0b4',
+    imageBg: '#252220',
   },
   {
     name: 'Midnight Silk Robe',
@@ -25,11 +25,11 @@ const MOCK_RECOMMENDATIONS = [
     why: "She never buys anything for herself — this is the kind of indulgence that feels chosen. Ethically sourced mulberry silk, hand-dyed in small batches.",
     tag: 'NEW MATCH',
     ctaText: 'Browse Details',
-    ctaColor: '#a89a8e',
+    ctaColor: '#c8956c',
     giftReady: true,
     url: '#',
     imageUrl: 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600&h=450&fit=crop&q=80',
-    imageBg: '#d4cfc7',
+    imageBg: '#252220',
   },
   {
     name: 'Sculptural Timepiece',
@@ -37,28 +37,29 @@ const MOCK_RECOMMENDATIONS = [
     why: 'A minimalist watch from an independent Swedish atelier. The kind of piece that becomes part of her identity, not just an accessory.',
     tag: 'TIMELESS CHOICE',
     ctaText: 'View Heritage',
-    ctaColor: '#b68d7a',
+    ctaColor: '#c8956c',
     giftReady: true,
     url: '#',
     imageUrl: 'https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=600&h=450&fit=crop&q=80',
-    imageBg: '#e8e2db',
+    imageBg: '#252220',
   },
 ];
 
 export async function POST(request) {
-  const { description } = await request.json();
-  console.log('raw description', description);
+  const { description, tasteProfile: providedProfile } = await request.json();
 
-  if (!description || !description.trim()) {
+  if (!providedProfile && (!description || !description.trim())) {
     return NextResponse.json(
-      { error: 'Description is required' },
+      { error: 'Description or taste profile is required' },
       { status: 400 }
     );
   }
 
   try {
-    // Step 1: Generate taste profile from description
-    const tasteProfile = await generateTasteProfile(description);
+    // Step 1: Use pre-built taste profile or generate one
+    const tasteProfile = providedProfile
+      ? { ...providedProfile, clarification: undefined }
+      : await generateTasteProfile(description);
 
     // Step 2: Generate broad queries from taste profile
     const deepQueries = await generateDeepQueries(tasteProfile);
@@ -85,10 +86,10 @@ export async function POST(request) {
       why: p.description || '',
       tag: 'GREAT FIND',
       ctaText: 'View Product',
-      ctaColor: '#a89a8e',
+      ctaColor: '#c8956c',
       url: p.merchantUrl,
       imageUrl: p.imageUrl,
-      imageBg: '#e8e2db',
+      imageBg: '#252220',
     }));
 
     // Build meta from taste profile

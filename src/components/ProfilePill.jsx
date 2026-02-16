@@ -1,9 +1,9 @@
 const CATEGORY_STYLES = {
-  interest:    { bg: 'rgba(143, 163, 138, 0.15)', text: '#8fa38a' },
-  aesthetic:   { bg: 'rgba(182, 141, 122, 0.15)', text: '#b68d7a' },
-  personality: { bg: 'rgba(168, 154, 142, 0.15)', text: '#a89a8e' },
-  budget:      { bg: 'rgba(122, 118, 114, 0.15)', text: '#7a7672' },
-  context:     { bg: 'rgba(240, 235, 229, 1)',     text: '#a89a8e' },
+  interest:    { bg: 'rgba(200,149,108,0.12)', text: '#c8956c' },
+  aesthetic:   { bg: 'rgba(160,152,144,0.12)', text: '#a09890' },
+  personality: { bg: 'rgba(143,163,138,0.12)', text: '#8fa38a' },
+  budget:      { bg: 'rgba(138,131,128,0.12)', text: '#8a8380' },
+  context:     { bg: 'rgba(255,255,255,0.06)', text: '#8a8380' },
 };
 
 export function ProfilePill({ label, category }) {

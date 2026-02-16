@@ -1,12 +1,12 @@
 export function GiftCardSkeleton({ index }) {
   return (
     <div
-      className="bg-white rounded-2xl overflow-hidden shadow-[0_2px_24px_rgba(0,0,0,0.04)] border border-border/30 flex flex-col animate-fade-up"
+      className="bg-white/[0.05] rounded-2xl overflow-hidden shadow-[0_2px_24px_rgba(0,0,0,0.3)] border border-border/30 flex flex-col animate-fade-up"
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}
     >
       {/* Image placeholder */}
-      <div className="relative aspect-[4/3] overflow-hidden bg-[#e8e2db]">
-        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/20 to-transparent skeleton-shimmer" />
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#252220]">
+        <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-transparent via-white/[0.04] to-transparent skeleton-shimmer" />
       </div>
 
       {/* Card body */}

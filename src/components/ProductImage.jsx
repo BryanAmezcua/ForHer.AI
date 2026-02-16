@@ -8,7 +8,7 @@ export function ProductImage({ src, alt, fallbackColor }) {
   return (
     <div
       className="relative aspect-[4/3] overflow-hidden"
-      style={{ backgroundColor: fallbackColor || '#e8e2db' }}
+      style={{ backgroundColor: fallbackColor || '#252220' }}
     >
       {src && status !== 'error' && (
         <img

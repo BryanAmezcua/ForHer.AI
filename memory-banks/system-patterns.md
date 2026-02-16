@@ -16,8 +16,10 @@ ForHer.AI/
 │   │   ├── layout.js          # Root layout with Manrope font
 │   │   ├── globals.css         # Tailwind + CSS variables + animations
 │   │   └── api/
+│   │       ├── taste-profile/
+│   │       │   └── route.js    # POST endpoint for taste profile + clarification
 │   │       └── recommendations/
-│   │           └── route.js    # POST endpoint for gift recommendations
+│   │           └── route.js    # POST endpoint for gift recommendations (accepts pre-built taste profile)
 │   ├── components/
 │   │   ├── ProfilePill.jsx     # Taste-profile pill (category-colored capsule)
 │   │   ├── ProductImage.jsx    # Product image with loading/error fallback
@@ -54,14 +56,19 @@ ForHer.AI/
 ### Key Patterns
 
 **State Machine (Phase-based UI):**
-The main page uses a `phase` state to switch between three views:
+The main page uses a `phase` state to switch between five views:
 - `'input'` — Text area for describing the recipient
-- `'thinking'` — Loading animation while fetching recommendations
+- `'thinking'` — Loading animation while generating taste profile or fetching recommendations
+- `'clarifying'` — Follow-up question with 3 pill options (only shown when description is vague)
+- `'populating'` — Skeleton cards while recommendations load
 - `'results'` — Gift card grid with personalized heading
 
-**API Communication:**
-- Client POSTs `{ description }` to `/api/recommendations`
-- Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
+**API Communication (Two-step flow):**
+1. Client POSTs `{ description }` to `/api/taste-profile`
+   - Server returns `{ tasteProfile: {...} }` — includes `clarification` field (question + 3 options with patches) or `clarification: null`
+2. If clarification needed: client shows question, user selects option, taste profile is patched client-side
+3. Client POSTs `{ tasteProfile }` to `/api/recommendations` (pre-built profile, skips re-generation)
+   - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
 - Taste profile is generated via OpenAI (gpt-4o-mini) from the free-text description
 
 **Product Discovery Pipeline (Serper Shopping):**
@@ -82,7 +89,7 @@ The main page uses a `phase` state to switch between three views:
 - Runs after `executeSerperQueries()`, before pruning
 
 **Serper Shopping Pruning:**
-- `src/lib/prune-serper.js` — `pruneSerperResults(products, tasteProfile)` scores and cuts to top 10
+- `src/lib/prune-serper.js` — `pruneSerperResults(products, tasteProfile)` scores and cuts to top 5
 - Hard filter: drop items with no image
 - Weighted scoring: interest relevance (35%), budget fit (25%), cluster size (20%), price sanity (10%), data completeness (10%)
 - Budget fit: 1.0 if within range, 0.5 if within 20% grace zone, 0 if way outside
@@ -110,7 +117,7 @@ The main page uses a `phase` state to switch between three views:
 - Search query: `"[product title] [source/retailer]"` with `maxResults: 1`
 - From top result: extracts merchant URL (from `result.url`) and description (from `result.content`)
 - Fallback: if Tavily returns no result or errors, keeps the Google Shopping link and sets description to null
-- Cost: 10 Tavily API calls per user request (1 per pruned product)
+- Cost: 5 Tavily API calls per user request (1 per pruned product)
 - `src/lib/search-tavily.js` — generic Tavily query executor, retained but not directly used in current pipeline
 
 **Component Strategy:**
@@ -145,24 +152,37 @@ Each recommendation object contains:
 ```
 
 ### Design Tokens (CSS Variables)
+Theme: "Whiskey Lounge" — dark warm palette, permanently dark (no light mode toggle).
+
 Defined in `globals.css`:
-- `--color-sage: #8fa38a` (Soft Sage Green — primary)
-- `--color-taupe: #a89a8e` (Warm Taupe)
-- `--color-clay: #b68d7a` (Muted Clay — accent)
-- `--color-cream: #fdfbf7` (Light airy cream — background)
-- `--color-stone-soft: #7a7672`
+- `--background: #1a1816` (Warm near-black page bg)
+- `--foreground: #f0ebe5` (Warm off-white primary text)
+- `--card: rgba(255,255,255,0.05)` (Card glass surface)
+- `--primary / --accent: #c8956c` (Copper — CTAs, highlights, focus rings)
+- `--muted: #252220` (Dark warm surface)
+- `--muted-foreground: #8a8380` (Warm gray secondary text)
+- `--border / --input: rgba(255,255,255,0.08)` (Subtle light borders)
+- `--ring: #c8956c` (Focus ring — copper)
+
+Brand color aliases:
+- `--color-copper: #c8956c`
+- `--color-warm-gray: #8a8380`
+- `--color-warm-gray-light: #a09890`
+- `--color-surface: #252220`
+- `--color-surface-light: #2a2725`
 - Font: Manrope via `next/font/google`
 
 **ProfilePill Color Mapping:**
 | Category | Background | Text |
 |----------|-----------|------|
-| `interest` | sage/15 | sage (#8fa38a) |
-| `aesthetic` | clay/15 | clay (#b68d7a) |
-| `personality` | taupe/15 | taupe (#a89a8e) |
-| `budget` | stone-soft/15 | stone-soft (#7a7672) |
-| `context` | muted | muted-foreground |
+| `interest` | copper/12 | copper (#c8956c) |
+| `aesthetic` | warm-gray-light/12 | warm-gray-light (#a09890) |
+| `personality` | sage/12 | sage (#8fa38a) |
+| `budget` | warm-gray/12 | warm-gray (#8a8380) |
+| `context` | white/6 | warm-gray (#8a8380) |
 
 ### Animations
 - `fade-up` — Entry animation for sections (opacity + translateY)
-- `spin-slow` — 3s rotation for thinking indicator
+- `pulse-ring` — 1.8s pulsing ring for thinking indicator (replaced spinning sparkle)
+- `spin-slow` — 3s rotation (retained for potential use)
 - Staggered `animationDelay` on gift cards for sequential reveal

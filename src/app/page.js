@@ -21,6 +21,22 @@ const SOFT_PROMPTS = [
   "What's the occasion?",
 ];
 
+// Shallow-merge a patch into the taste profile (one level deep for nested objects)
+function patchProfile(profile, patch) {
+  const result = { ...profile };
+  for (const [key, value] of Object.entries(patch)) {
+    if (Array.isArray(value) && Array.isArray(result[key])) {
+      // Merge arrays (e.g. interests)
+      result[key] = [...result[key], ...value];
+    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+      result[key] = { ...result[key], ...value };
+    } else {
+      result[key] = value;
+    }
+  }
+  return result;
+}
+
 export default function Home() {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -28,6 +44,7 @@ export default function Home() {
   const [recommendations, setRecommendations] = useState([]);
   const [meta, setMeta] = useState(null);
   const [tasteProfile, setTasteProfile] = useState(null);
+  const [clarification, setClarification] = useState(null);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -37,18 +54,15 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleSubmit = async () => {
-    if (!input.trim()) return;
+  const fetchRecommendations = async (profile) => {
     setPhase('thinking');
-
-    // Auto-transition to skeleton view after 3s while API continues in background
     const skeletonTimer = setTimeout(() => setPhase('populating'), 5000);
 
     try {
       const res = await fetch('/api/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: input }),
+        body: JSON.stringify({ tasteProfile: profile }),
       });
       const data = await res.json();
       clearTimeout(skeletonTimer);
@@ -63,6 +77,43 @@ export default function Home() {
     }
   };
 
+  const handleSubmit = async () => {
+    if (!input.trim()) return;
+    setPhase('thinking');
+
+    try {
+      // Step 1: Generate taste profile (fast — ~1-2s)
+      const res = await fetch('/api/taste-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: input }),
+      });
+      const { tasteProfile: profile } = await res.json();
+      setTasteProfile(profile);
+
+      // Step 2: Check if clarification is needed
+      if (profile.clarification) {
+        setClarification(profile.clarification);
+        setPhase('clarifying');
+        return;
+      }
+
+      // Step 3: Description is rich enough — run full pipeline
+      await fetchRecommendations(profile);
+    } catch (err) {
+      console.error(err);
+      setPhase('input');
+    }
+  };
+
+  const handleClarificationSelect = async (option) => {
+    const patched = patchProfile(tasteProfile, option.patch);
+    patched.clarification = null;
+    setTasteProfile(patched);
+    setClarification(null);
+    await fetchRecommendations(patched);
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -75,15 +126,16 @@ export default function Home() {
     setRecommendations([]);
     setMeta(null);
     setTasteProfile(null);
+    setClarification(null);
     setPhase('input');
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
   return (
-    <main className="min-h-screen bg-linear-to-b from-cream via-[#f5f0ea] to-[#ede5db] relative overflow-hidden">
+    <main className="min-h-screen bg-linear-to-b from-[#1a1816] via-[#1c1a17] to-[#1e1b18] relative overflow-hidden">
       {/* Subtle grain texture */}
       <div
-        className="fixed inset-0 opacity-[0.03] pointer-events-none z-0"
+        className="fixed inset-0 opacity-[0.015] pointer-events-none z-0"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
@@ -94,7 +146,6 @@ export default function Home() {
         {phase === 'input' && (
           <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10">
             <header className="text-center mb-14 animate-fade-up">
-              <div className="text-2xl mb-3 opacity-50 text-taupe">&#9825;</div>
               <h1 className="text-[2.6rem] font-bold text-foreground tracking-tight leading-none">
                 Gift Finder
               </h1>
@@ -118,14 +169,14 @@ export default function Home() {
                 onKeyDown={handleKeyDown}
                 placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
                 rows={5}
-                className="w-full min-h-[140px] bg-white/65 border-[1.5px] border-border rounded-2xl px-6 py-5 text-base leading-relaxed text-foreground placeholder:text-taupe/60 placeholder:transition-opacity placeholder:duration-400 focus:placeholder:opacity-40 focus-visible:border-sage focus-visible:ring-sage/30 shadow-[0_2px_20px_rgba(170,145,110,0.06)] resize-y transition-all duration-300 mb-4"
+                className="w-full min-h-[140px] bg-white/[0.05] border-[1.5px] border-border rounded-2xl px-6 py-5 text-base leading-relaxed text-foreground placeholder:text-warm-gray/60 placeholder:transition-opacity placeholder:duration-400 focus:placeholder:opacity-40 focus-visible:border-copper focus-visible:ring-copper/30 shadow-[0_2px_20px_rgba(0,0,0,0.3)] resize-y transition-all duration-300 mb-4"
               />
 
               <div className="flex gap-3 justify-center flex-wrap mb-8">
                 {SOFT_PROMPTS.map((p, i) => (
                   <span
                     key={i}
-                    className="text-xs text-taupe bg-white/50 px-3.5 py-1.5 rounded-full border border-border"
+                    className="text-xs text-warm-gray bg-white/[0.06] px-3.5 py-1.5 rounded-full border border-border"
                   >
                     {p}
                   </span>
@@ -135,7 +186,7 @@ export default function Home() {
               <Button
                 onClick={handleSubmit}
                 disabled={!input.trim()}
-                className="bg-taupe hover:bg-taupe/90 text-white font-semibold text-[15px] rounded-xl px-9 py-6 shadow-[0_4px_16px_rgba(168,154,142,0.3)] transition-all duration-300 tracking-wide disabled:opacity-40 disabled:cursor-default"
+                className="bg-copper hover:bg-copper/90 text-white font-semibold text-[15px] rounded-xl px-9 py-6 shadow-[0_4px_16px_rgba(200,149,108,0.25)] transition-all duration-300 tracking-wide disabled:opacity-40 disabled:cursor-default"
               >
                 Find her something wonderful
               </Button>
@@ -157,7 +208,7 @@ export default function Home() {
         {phase === 'thinking' && (
           <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10">
             <section className="text-center py-20 animate-fade-up">
-              <div className="text-3xl text-sage mb-5 animate-spin-slow inline-block">&#10022;</div>
+              <div className="w-8 h-8 rounded-full border-2 border-copper/60 animate-pulse-ring mx-auto mb-5" />
               <p className="text-xl font-semibold text-foreground mb-2">
                 Finding something she&apos;ll love...
               </p>
@@ -168,12 +219,58 @@ export default function Home() {
           </div>
         )}
 
+        {/* ==================== CLARIFYING PHASE ==================== */}
+        {phase === 'clarifying' && clarification && (
+          <div className="max-w-[680px] mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-10">
+            {/* Compact header */}
+            <header className="text-center mb-8 sm:mb-10">
+              <h1 className="text-2xl sm:text-[2.2rem] font-bold text-foreground tracking-tight leading-none">
+                Gift Finder
+              </h1>
+              <p className="text-sm text-muted-foreground italic mt-1 tracking-wide font-normal">
+                for her
+              </p>
+            </header>
+
+            {/* User's input shown as read-only context */}
+            <div className="bg-white/[0.04] border border-border/50 rounded-xl px-4 sm:px-5 py-3 sm:py-4 text-sm text-foreground/50 leading-relaxed mb-5 sm:mb-6 line-clamp-3">
+              {input}
+            </div>
+
+            {/* Clarification card */}
+            <div className="animate-fade-up bg-white/[0.06] backdrop-blur-md border border-border rounded-2xl p-5 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+              <div className="text-center mb-5 sm:mb-6">
+                <span className="text-lg text-copper mb-3 inline-block">&mdash;</span>
+                <p className="text-[15px] sm:text-base font-semibold text-foreground mb-1.5">
+                  One quick thing&hellip;
+                </p>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
+                  {clarification.question}
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-center">
+                {clarification.options.map((opt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleClarificationSelect(opt)}
+                    className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-white/[0.08] border border-border text-sm font-medium text-foreground hover:bg-white/[0.14] hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 cursor-pointer animate-fade-up"
+                    style={{ animationDelay: `${0.15 + i * 0.1}s` }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ==================== POPULATING PHASE ==================== */}
         {phase === 'populating' && (
           <div className="animate-fade-up">
             {/* ── Nav bar (matches results layout) ── */}
             <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-6 py-4 border-b border-border/50">
-              <div className="flex items-center gap-2 text-sm text-stone-soft">
+              <div className="flex items-center gap-2 text-sm text-warm-gray-light">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
                   <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -182,7 +279,7 @@ export default function Home() {
               <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
                 Gift Finder &middot; For Her
               </span>
-              <span className="text-lg opacity-40 text-taupe select-none">&#9825;</span>
+              <span className="w-4" />
             </nav>
 
             {/* ── Main content ── */}
@@ -199,7 +296,7 @@ export default function Home() {
 
               {/* ── Skeleton cards ── */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
-                {[0, 1, 2].map(i => (
+                {[0, 1, 2, 3, 4].map(i => (
                   <GiftCardSkeleton key={i} index={i} />
                 ))}
               </div>
@@ -214,7 +311,7 @@ export default function Home() {
             <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-6 py-4 border-b border-border/50">
               <button
                 onClick={handleStartOver}
-                className="flex items-center gap-2 text-sm text-stone-soft hover:text-foreground transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
                   <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -224,7 +321,7 @@ export default function Home() {
               <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
                 Gift Finder &middot; For Her
               </span>
-              <span className="text-lg opacity-40 text-taupe select-none">&#9825;</span>
+              <span className="w-4" />
             </nav>
 
             {/* ── Main content ── */}

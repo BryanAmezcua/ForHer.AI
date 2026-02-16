@@ -50,10 +50,13 @@ The experience must feel **calming and reassuring**. The user is likely already 
 - **Minimal chrome** — the text box is the product
 
 ### Visual Direction
-- Soft, muted palette — warm neutrals, gentle earth tones
-- Generous whitespace
+- **"Whiskey Lounge" dark warm theme** — dark charcoal backgrounds (#1a1816) with warm undertones
+- Copper accent (#c8956c) for CTAs, highlights, and focus rings
+- Warm off-white text (#f0ebe5) on dark surfaces — product images pop against dark cards
+- Glass-effect cards (white/5 with backdrop-blur)
+- Generous whitespace (dark space)
 - Rounded, approachable typography
-- Subtle micro-animations (fade-in, recommendations appearing one at a time)
+- Subtle micro-animations (fade-in, pulsing ring loader, recommendations appearing one at a time)
 - No stock photos of smiling women holding gift boxes
 
 ### Future Vision: Recipient Agents (Phase 3+)
