@@ -8,10 +8,14 @@
 - Text area with rotating placeholder examples
 - Soft prompt hints ("What does she light up about?", etc.)
 - Submit sends POST to `/api/taste-profile` first, then `/api/recommendations`
-- Thinking state with spinner animation
+- Thinking state with multi-step progress indicator (3 pulsing rings that advance on timers)
 - Clarification phase: LLM-generated follow-up question with 3 pill options (only when description is vague)
 - Client-side taste profile patching from clarification answers
-- Results page displays gift cards in a 3-column grid (responsive)
+- Results page displays gift cards in responsive grid (1-col mobile, 2-col tablet, 3-col desktop)
+- Top pick card visually ranked: copper border/glow, "TOP PICK" tag, spans 2 columns on sm+
+- Card hover state: subtle lift (-translate-y-1) + shadow increase
+- Brand mark (copper 4-pointed sparkle) on input, thinking, and clarifying phases
+- Warm radial copper glow behind input area
 - Pipeline now prunes to top 5 products (down from 10) — halves Tavily enrichment cost
 - Product image component with loading/error fallback states
 - Rich summary text with **bold** marker parsing

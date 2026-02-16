@@ -3,10 +3,14 @@
 import { ProductImage } from './ProductImage';
 import { ProfilePill } from './ProfilePill';
 
-export function GiftCard({ gift, index }) {
+export function GiftCard({ gift, index, isTopPick }) {
   return (
     <div
-      className="bg-white/[0.05] backdrop-blur-sm rounded-2xl overflow-hidden shadow-[0_2px_24px_rgba(0,0,0,0.3)] border border-border/30 flex flex-col animate-fade-up"
+      className={`bg-white/[0.05] backdrop-blur-sm rounded-2xl overflow-hidden border flex flex-col animate-fade-up transition-all duration-300 hover:-translate-y-1 ${
+        isTopPick
+          ? 'sm:col-span-2 border-copper/25 shadow-[0_2px_24px_rgba(200,149,108,0.1)] hover:shadow-[0_12px_40px_rgba(200,149,108,0.18)]'
+          : 'border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
+      }`}
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}
     >
       {/* Product image */}
@@ -18,7 +22,7 @@ export function GiftCard({ gift, index }) {
 
       {/* Card body */}
       <div className="p-5 flex flex-col flex-1">
-        {/* Match score + price */}
+        {/* Tag + price */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-1.5">
             {gift.matchScore ? (
@@ -31,7 +35,9 @@ export function GiftCard({ gift, index }) {
                   className="w-1.5 h-1.5 rounded-full flex-shrink-0"
                   style={{ backgroundColor: gift.ctaColor }}
                 />
-                <span className="text-[10px] uppercase tracking-[0.12em] font-semibold text-warm-gray-light">
+                <span className={`text-[10px] uppercase tracking-[0.12em] font-semibold ${
+                  isTopPick ? 'text-copper' : 'text-warm-gray-light'
+                }`}>
                   {gift.tag}
                 </span>
               </>

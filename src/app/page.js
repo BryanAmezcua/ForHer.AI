@@ -21,6 +21,12 @@ const SOFT_PROMPTS = [
   "What's the occasion?",
 ];
 
+const THINKING_STEPS = [
+  "Reading between the lines...",
+  "Searching for the perfect gifts...",
+  "Curating your picks...",
+];
+
 // Shallow-merge a patch into the taste profile (one level deep for nested objects)
 function patchProfile(profile, patch) {
   const result = { ...profile };
@@ -37,6 +43,17 @@ function patchProfile(profile, patch) {
   return result;
 }
 
+function BrandMark() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" className="text-copper mx-auto mb-3 opacity-70">
+      <path
+        d="M10 0C10 6 14 10 20 10C14 10 10 14 10 20C10 14 6 10 0 10C6 10 10 6 10 0Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -45,6 +62,7 @@ export default function Home() {
   const [meta, setMeta] = useState(null);
   const [tasteProfile, setTasteProfile] = useState(null);
   const [clarification, setClarification] = useState(null);
+  const [thinkingStep, setThinkingStep] = useState(0);
   const textareaRef = useRef(null);
 
   useEffect(() => {
@@ -54,9 +72,18 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
+  // Advance thinking steps on timers
+  useEffect(() => {
+    if (phase !== 'thinking') return;
+    setThinkingStep(0);
+    const t1 = setTimeout(() => setThinkingStep(1), 2500);
+    const t2 = setTimeout(() => setThinkingStep(2), 5000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [phase]);
+
   const fetchRecommendations = async (profile) => {
     setPhase('thinking');
-    const skeletonTimer = setTimeout(() => setPhase('populating'), 5000);
+    const skeletonTimer = setTimeout(() => setPhase('populating'), 7000);
 
     try {
       const res = await fetch('/api/recommendations', {
@@ -144,8 +171,15 @@ export default function Home() {
       <div className="relative z-10">
         {/* ==================== INPUT PHASE ==================== */}
         {phase === 'input' && (
-          <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10">
-            <header className="text-center mb-14 animate-fade-up">
+          <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10 relative">
+            {/* Warm radial glow */}
+            <div
+              className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(ellipse, rgba(200,149,108,0.05) 0%, transparent 70%)' }}
+            />
+
+            <header className="text-center mb-14 animate-fade-up relative">
+              <BrandMark />
               <h1 className="text-[2.6rem] font-bold text-foreground tracking-tight leading-none">
                 Gift Finder
               </h1>
@@ -154,7 +188,7 @@ export default function Home() {
               </p>
             </header>
 
-            <section className="text-center animate-fade-up" style={{ animationDelay: '0.2s' }}>
+            <section className="text-center animate-fade-up relative" style={{ animationDelay: '0.2s' }}>
               <h2 className="text-[1.6rem] font-semibold text-foreground mb-2">
                 Tell us about her.
               </h2>
@@ -196,7 +230,7 @@ export default function Home() {
               </p>
             </section>
 
-            <footer className="text-center mt-16 pt-6 animate-fade-up" style={{ animationDelay: '0.4s' }}>
+            <footer className="text-center mt-16 pt-6 animate-fade-up relative" style={{ animationDelay: '0.4s' }}>
               <p className="text-sm text-muted-foreground/60 italic tracking-wide">
                 You got this. She&apos;s going to love it.
               </p>
@@ -208,13 +242,49 @@ export default function Home() {
         {phase === 'thinking' && (
           <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10">
             <section className="text-center py-20 animate-fade-up">
-              <div className="w-8 h-8 rounded-full border-2 border-copper/60 animate-pulse-ring mx-auto mb-5" />
-              <p className="text-xl font-semibold text-foreground mb-2">
+              <BrandMark />
+              <p className="text-xl font-semibold text-foreground mb-10">
                 Finding something she&apos;ll love...
               </p>
-              <p className="text-sm text-muted-foreground italic">
-                Reading between the lines of what you told us
-              </p>
+
+              {/* Multi-step progress */}
+              <div className="flex flex-col items-center gap-5">
+                {THINKING_STEPS.map((step, i) => {
+                  const isActive = i === thinkingStep;
+                  const isDone = i < thinkingStep;
+                  const isPending = i > thinkingStep;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`flex items-center gap-3 transition-all duration-700 ${
+                        isPending ? 'opacity-25' : 'opacity-100'
+                      }`}
+                    >
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${
+                          isDone
+                            ? 'bg-copper'
+                            : isActive
+                              ? 'border-[1.5px] border-copper animate-pulse-ring'
+                              : 'border-[1.5px] border-warm-gray/40'
+                        }`}
+                      />
+                      <span
+                        className={`text-sm transition-colors duration-500 ${
+                          isActive
+                            ? 'text-foreground'
+                            : isDone
+                              ? 'text-copper'
+                              : 'text-muted-foreground'
+                        }`}
+                      >
+                        {step}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           </div>
         )}
@@ -224,6 +294,7 @@ export default function Home() {
           <div className="max-w-[680px] mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-10">
             {/* Compact header */}
             <header className="text-center mb-8 sm:mb-10">
+              <BrandMark />
               <h1 className="text-2xl sm:text-[2.2rem] font-bold text-foreground tracking-tight leading-none">
                 Gift Finder
               </h1>
@@ -295,9 +366,9 @@ export default function Home() {
               </div>
 
               {/* ── Skeleton cards ── */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
                 {[0, 1, 2, 3, 4].map(i => (
-                  <GiftCardSkeleton key={i} index={i} />
+                  <GiftCardSkeleton key={i} index={i} isTopPick={i === 0} />
                 ))}
               </div>
             </div>
@@ -338,9 +409,9 @@ export default function Home() {
               </div>
 
               {/* ── Product cards ── */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
                 {recommendations.map((gift, i) => (
-                  <GiftCard key={i} gift={gift} index={i} />
+                  <GiftCard key={i} gift={gift} index={i} isTopPick={i === 0} />
                 ))}
               </div>
 

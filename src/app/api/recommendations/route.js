@@ -88,7 +88,7 @@ export async function POST(request) {
       name: p.title,
       price: p.price || 'Price unavailable',
       description: p.description || '',
-      tag: 'GREAT FIND',
+      tag: i === 0 ? 'TOP PICK' : 'GREAT FIND',
       ctaText: 'View Product',
       ctaColor: '#c8956c',
       url: p.merchantUrl,

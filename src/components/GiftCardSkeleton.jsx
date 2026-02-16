@@ -1,7 +1,11 @@
-export function GiftCardSkeleton({ index }) {
+export function GiftCardSkeleton({ index, isTopPick }) {
   return (
     <div
-      className="bg-white/[0.05] rounded-2xl overflow-hidden shadow-[0_2px_24px_rgba(0,0,0,0.3)] border border-border/30 flex flex-col animate-fade-up"
+      className={`bg-white/[0.05] rounded-2xl overflow-hidden border flex flex-col animate-fade-up ${
+        isTopPick
+          ? 'sm:col-span-2 border-copper/15 shadow-[0_2px_24px_rgba(200,149,108,0.06)]'
+          : 'border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)]'
+      }`}
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}
     >
       {/* Image placeholder */}
