@@ -32,17 +32,16 @@ function meaningfulTokens(tokens) {
   return tokens.filter(t => t.length >= MIN_TOKEN_LENGTH && !STOPWORDS.has(t));
 }
 
-// ── Return { count, matched } for interest overlap with title ──
-// Checks raw interest tokens first, then falls back to alias tokens
+// ── Count how many interests overlap with the product title ──
+// Checks raw interest tokens first, then falls back to alias tokens.
+// Used for pruning scores only — pill labels are generated separately via LLM.
 function interestOverlap(titleTokens, interests, interestAliases) {
-  if (!interests || interests.length === 0) return { count: 0, matched: [] };
+  if (!interests || interests.length === 0) return 0;
 
   const titleSet = new Set(meaningfulTokens(titleTokens));
-  let count = 0;
-  const matched = [];
+  let hits = 0;
 
   for (const interest of interests) {
-    // Try raw interest tokens first
     const interestTokens = meaningfulTokens(tokenize(interest));
     let hit = false;
     for (const token of interestTokens) {
@@ -67,33 +66,10 @@ function interestOverlap(titleTokens, interests, interestAliases) {
       }
     }
 
-    if (hit) {
-      count++;
-      matched.push(interest);
-    }
+    if (hit) hits++;
   }
 
-  return { count, matched };
-}
-
-// ── Return which aesthetic style terms overlap with the title ──
-function aestheticOverlap(titleTokens, aesthetic) {
-  if (!aesthetic || !aesthetic.style || aesthetic.style.length === 0) return [];
-
-  const titleSet = new Set(meaningfulTokens(titleTokens));
-  const matched = [];
-
-  for (const style of aesthetic.style) {
-    const styleTokens = meaningfulTokens(tokenize(style));
-    for (const token of styleTokens) {
-      if (titleSet.has(token)) {
-        matched.push(style);
-        break;
-      }
-    }
-  }
-
-  return matched;
+  return hits;
 }
 
 // ── Check if price falls within budget range ──
@@ -125,7 +101,7 @@ function budgetFitScore(priceValue, budget) {
  * @returns {Array} Top 10 pruned products
  */
 export function pruneSerperResults(products, tasteProfile) {
-  const { budget, interests, interestAliases, aesthetic } = tasteProfile;
+  const { budget, interests, interestAliases } = tasteProfile;
 
   // Hard filter: drop items with no image
   const withImages = products.filter(p => !!p.imageUrl);
@@ -145,8 +121,7 @@ export function pruneSerperResults(products, tasteProfile) {
     const clusterScore = clusterSize >= 3 ? 1.0 : clusterSize === 2 ? 0.5 : 0.2;
 
     // 3. Interest relevance — token overlap with interests (weight 35%)
-    const { count: interestHits, matched: matchedInterests } = interestOverlap(titleTokens, interests, interestAliases);
-    const matchedAesthetics = aestheticOverlap(titleTokens, aesthetic);
+    const interestHits = interestOverlap(titleTokens, interests, interestAliases);
     const interestScore = interests && interests.length > 0
       ? Math.min(interestHits / Math.min(interests.length, 3), 1.0)
       : 0.5; // no interests provided = neutral
@@ -168,10 +143,7 @@ export function pruneSerperResults(products, tasteProfile) {
       priceScore * 0.10 +
       completenessScore * 0.10;
 
-    return {
-      product, total, budgetFit, clusterScore, interestScore, priceScore, completenessScore,
-      matchedInterests, matchedAesthetics, priceValue,
-    };
+    return { product, total, budgetFit, clusterScore, interestScore, priceScore, completenessScore };
   });
 
   // Sort descending by score, take top N
@@ -188,8 +160,5 @@ export function pruneSerperResults(products, tasteProfile) {
   }
   console.log(`==================================\n`);
 
-  return pruned.map(({ product, matchedInterests, matchedAesthetics, budgetFit, priceValue }) => ({
-    ...product,
-    _matchMeta: { matchedInterests, matchedAesthetics, budgetFit, priceValue },
-  }));
+  return pruned.map(({ product }) => product);
 }

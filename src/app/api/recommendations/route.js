@@ -5,7 +5,7 @@ import { executeSerperQueries } from '@/lib/search-serper';
 import { dedupeSerperResults } from '@/lib/dedupe-serper';
 import { pruneSerperResults } from '@/lib/prune-serper';
 import { enrichProducts } from '@/lib/enrich-serper';
-import { generatePills } from '@/lib/generate-pills';
+import { generatePillLabels } from '@/lib/generate-pills';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -77,39 +77,25 @@ export async function POST(request) {
     // Step 5: Prune to top 10 by relevance scoring
     const prunedProducts = pruneSerperResults(uniqueProducts, tasteProfile);
 
-    // Step 6: Enrich with merchant URLs and descriptions via Tavily
-    const enrichedProducts = await enrichProducts(prunedProducts);
+    // Step 6: Enrich products + generate pill labels in parallel
+    const [enrichedProducts, pillLabels] = await Promise.all([
+      enrichProducts(prunedProducts),
+      generatePillLabels(prunedProducts, tasteProfile),
+    ]);
 
-    // Step 7: Build recommendations from enriched products + generate pills
-    const recommendations = enrichedProducts.map(p => ({
+    // Step 7: Merge enriched data + pills into recommendations
+    const recommendations = enrichedProducts.map((p, i) => ({
       name: p.title,
       price: p.price || 'Price unavailable',
-      why: p.description || '',
+      description: p.description || '',
       tag: 'GREAT FIND',
       ctaText: 'View Product',
       ctaColor: '#c8956c',
       url: p.merchantUrl,
       imageUrl: p.imageUrl,
       imageBg: '#252220',
-      matchedAttributes: generatePills(p, tasteProfile),
+      matchedAttributes: pillLabels[i] || [],
     }));
-
-    // Post-process: if ALL products got a budget pill, strip them (not differentiating)
-    const allHaveBudget = recommendations.every(r =>
-      r.matchedAttributes.some(a => a.category === 'budget')
-    );
-    if (allHaveBudget) {
-      for (const r of recommendations) {
-        r.matchedAttributes = r.matchedAttributes.filter(a => a.category !== 'budget');
-      }
-    }
-
-    // Log zero-pill products for quality monitoring
-    for (const r of recommendations) {
-      if (r.matchedAttributes.length === 0) {
-        console.warn(`⚠ Zero pills for "${r.name}" — matching may be too strict or taste profile too thin`);
-      }
-    }
 
     // Build meta from taste profile
     const curatedFor = tasteProfile.recipient?.name
