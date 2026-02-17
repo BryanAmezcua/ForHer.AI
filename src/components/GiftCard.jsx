@@ -8,7 +8,7 @@ export function GiftCard({ gift, index, isTopPick }) {
     <div
       className={`bg-white/[0.05] backdrop-blur-sm rounded-2xl overflow-hidden border flex flex-col animate-fade-up transition-all duration-300 hover:-translate-y-1 ${
         isTopPick
-          ? 'sm:col-span-2 border-copper/25 shadow-[0_2px_24px_rgba(200,149,108,0.1)] hover:shadow-[0_12px_40px_rgba(200,149,108,0.18)]'
+          ? 'border-copper/40 shadow-[0_0_20px_rgba(200,149,108,0.15),0_0_40px_rgba(200,149,108,0.08)] hover:shadow-[0_0_24px_rgba(200,149,108,0.25),0_0_48px_rgba(200,149,108,0.12)] ring-1 ring-copper/15'
           : 'border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
       }`}
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}

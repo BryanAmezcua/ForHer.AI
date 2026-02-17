@@ -3,7 +3,7 @@ export function GiftCardSkeleton({ index, isTopPick }) {
     <div
       className={`bg-white/[0.05] rounded-2xl overflow-hidden border flex flex-col animate-fade-up ${
         isTopPick
-          ? 'sm:col-span-2 border-copper/15 shadow-[0_2px_24px_rgba(200,149,108,0.06)]'
+          ? 'border-copper/40 shadow-[0_0_20px_rgba(200,149,108,0.15),0_0_40px_rgba(200,149,108,0.08)] ring-1 ring-copper/15'
           : 'border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)]'
       }`}
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}

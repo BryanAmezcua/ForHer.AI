@@ -12,7 +12,7 @@
 - Clarification phase: LLM-generated follow-up question with 3 pill options (only when description is vague)
 - Client-side taste profile patching from clarification answers
 - Results page displays gift cards in responsive grid (1-col mobile, 2-col tablet, 3-col desktop)
-- Top pick card visually ranked: copper border/glow, "TOP PICK" tag, spans 2 columns on sm+
+- Top pick card visually ranked: enhanced copper border/glow with ring accent, same size as other cards (no col-span)
 - Card hover state: subtle lift (-translate-y-1) + shadow increase
 - Brand mark (copper 4-pointed sparkle) on input, thinking, and clarifying phases
 - Warm radial copper glow behind input area

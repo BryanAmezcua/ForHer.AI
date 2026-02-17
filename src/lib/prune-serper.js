@@ -1,4 +1,4 @@
-const MAX_RESULTS = 5;
+const MAX_RESULTS = 9;
 const MIN_PRICE = 5; // Items under $5 are probably not real gifts
 const MIN_TOKEN_LENGTH = 3;
 
