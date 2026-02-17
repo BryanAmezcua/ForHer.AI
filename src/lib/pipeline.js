@@ -4,7 +4,7 @@ import { executeScrapingDogQueries, getAllCachedResults } from '@/lib/search-scr
 import { dedupeProducts } from '@/lib/dedupe-products';
 import { pruneProducts, DISPLAY_COUNT } from '@/lib/prune-products';
 import { enrichProducts } from '@/lib/enrich-scrapingdog';
-import { generatePillLabels } from '@/lib/generate-pills';
+import { generateProductInsights } from '@/lib/generate-pills';
 import { scorePDP, PDP_REJECT_THRESHOLD } from '@/lib/score-pdp';
 
 // ── Merchant badge extraction ──
@@ -36,9 +36,36 @@ function extractMerchantBadges(extensions) {
   return badges;
 }
 
+// ── Badge derivation from matchScore + taste profile ──
+
+function deriveBadge(matchScore, index, tasteProfile) {
+  // Top pick with high score → confidence badge
+  if (index === 0 && matchScore >= 85) {
+    return { badgeLabel: 'Best Match', badgeType: 'confidence' };
+  }
+  if (matchScore >= 85) {
+    return { badgeLabel: 'Great Match', badgeType: 'confidence' };
+  }
+
+  // Occasion-specific badge when a real occasion is present
+  const occasion = tasteProfile.occasion?.event;
+  if (occasion && occasion !== 'just because') {
+    const capitalized = occasion.charAt(0).toUpperCase() + occasion.slice(1);
+    return { badgeLabel: `Perfect for ${capitalized}`, badgeType: 'occasion' };
+  }
+
+  // Fallback — social/emotional badge
+  return { badgeLabel: "She'll Love This", badgeType: 'social' };
+}
+
 // ── Map a product to a recommendation object ──
 
-function buildRecommendation(product, index, { pills, isEnriched } = {}) {
+function buildRecommendation(product, index, tasteProfile, { pills, reactionLine, isEnriched } = {}) {
+  const matchScore = product._matchScore ?? null;
+  const { badgeLabel, badgeType } = matchScore !== null
+    ? deriveBadge(matchScore, index, tasteProfile)
+    : { badgeLabel: null, badgeType: null };
+
   const base = {
     name: product.title,
     price: product.price || 'Price unavailable',
@@ -47,6 +74,10 @@ function buildRecommendation(product, index, { pills, isEnriched } = {}) {
     ctaText: 'View Product',
     ctaColor: '#c8956c',
     imageBg: '#252220',
+    matchScore,
+    badgeLabel,
+    badgeType,
+    reactionLine: reactionLine || null,
   };
 
   if (isEnriched) {
@@ -110,7 +141,7 @@ async function runCacheOnlyPipeline(tasteProfile) {
   const finalProducts = prunedProducts.slice(0, DISPLAY_COUNT);
 
   const recommendations = finalProducts.map((p, i) =>
-    buildRecommendation(p, i, { isEnriched: false })
+    buildRecommendation(p, i, tasteProfile, { isEnriched: false })
   );
 
   return { recommendations, meta: buildMeta(tasteProfile, recommendations.length) };
@@ -134,10 +165,10 @@ async function runFullPipeline(tasteProfile) {
   // Step 4: Prune to enrichment pool
   const prunedProducts = pruneProducts(uniqueProducts, tasteProfile);
 
-  // Step 5: Enrich products + generate pill labels in parallel
-  const [enrichedProducts, pillLabels] = await Promise.all([
+  // Step 5: Enrich products + generate insights (pills + reaction lines) in parallel
+  const [enrichedProducts, insights] = await Promise.all([
     enrichProducts(prunedProducts),
-    generatePillLabels(prunedProducts, tasteProfile),
+    generateProductInsights(prunedProducts, tasteProfile),
   ]);
 
   // Step 6: PDP confidence scoring — reject non-product pages
@@ -152,8 +183,9 @@ async function runFullPipeline(tasteProfile) {
 
   // Step 7: Build recommendation objects
   const recommendations = finalProducts.map((p, i) =>
-    buildRecommendation(p, i, {
-      pills: pillLabels[p._originalIndex] || [],
+    buildRecommendation(p, i, tasteProfile, {
+      pills: insights.pills[p._originalIndex] || [],
+      reactionLine: insights.reactionLines[p._originalIndex] || null,
       isEnriched: true,
     })
   );

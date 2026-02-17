@@ -180,5 +180,8 @@ export function pruneProducts(products, tasteProfile) {
   }
   debugLog(`====================================\n`);
 
-  return pruned.map(({ product }) => product);
+  return pruned.map(({ product, total }) => {
+    product._matchScore = Math.round(total * 100);
+    return product;
+  });
 }

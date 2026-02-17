@@ -2,9 +2,12 @@ import openai, { MODEL } from './openai';
 import { stripMarkdownFences } from './strip-markdown';
 import { debugLog } from './debug';
 
-const PILL_PROMPT = `You are a gift recommendation assistant. Given a taste profile describing a gift recipient and a list of products selected for her, generate 1-2 short pill labels per product that explain WHY each product fits her specifically.
+const SYSTEM_PROMPT = `You are a gift recommendation assistant. Given a taste profile describing a gift recipient and a list of products selected for her, generate two things per product:
 
-Rules:
+1. **pills** — 1-2 short pill labels explaining WHY this product fits her specifically.
+2. **reactionLine** — A short, warm predicted reaction from the recipient (6-12 words).
+
+Pill rules:
 - Each pill has a "label" (2-4 words) and a "category" (one of: "interest", "aesthetic", "personality", "context")
 - Use "interest" when connecting to a specific hobby, passion, or interest from the profile
 - Use "aesthetic" when it matches her style or aesthetic preferences
@@ -16,18 +19,27 @@ Rules:
 - Every product MUST have at least 1 pill — always find something meaningful to say
 - Keep labels concise and title-cased (e.g. "Baking Enthusiast", "Minimalist", "Self-Care")
 
-Return ONLY a JSON array of arrays. Each inner array corresponds to the product at that index and contains 1-2 pill objects. Example:
-[[{"label":"Baking Enthusiast","category":"interest"}],[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],[{"label":"Unique Find","category":"context"}]]`;
+Reaction line rules:
+- Write as if predicting what the recipient would say or feel when receiving this gift
+- Keep it warm, specific, and conversational — not generic
+- 6-12 words, no quotes around it
+- Examples: "She'll use this every single morning", "This is so her style", "She's been eyeing something like this"
+- Avoid generic lines like "She'll love it" — connect to something specific about her or the product
+
+Return ONLY a JSON array of objects. Each object corresponds to the product at that index:
+[{"pills":[{"label":"Baking Enthusiast","category":"interest"}],"reactionLine":"She'll want to bake every weekend"},{"pills":[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],"reactionLine":"This is exactly her vibe"}]`;
 
 /**
- * Generate pill labels for all products in a single LLM call.
+ * Generate pill labels and reaction lines for all products in a single LLM call.
  * Runs in parallel with enrichment — only needs product titles + taste profile.
  *
  * @param {Array} products - Pruned products (need .title at minimum)
  * @param {Object} tasteProfile - The user's taste profile
- * @returns {Array<Array<{label: string, category: string}>>} Pills per product (by index)
+ * @returns {{ pills: Array<Array<{label: string, category: string}>>, reactionLines: string[] }}
  */
-export async function generatePillLabels(products, tasteProfile) {
+export async function generateProductInsights(products, tasteProfile) {
+  const empty = { pills: products.map(() => []), reactionLines: products.map(() => null) };
+
   // Build a compact profile summary for the prompt (no aliases or clarification needed)
   const profileSummary = {
     interests: tasteProfile.interests,
@@ -45,36 +57,43 @@ export async function generatePillLabels(products, tasteProfile) {
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages: [
-        { role: 'system', content: PILL_PROMPT },
+        { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userMessage },
       ],
       temperature: 0.3,
-      max_tokens: 600,
+      max_tokens: 900,
     });
 
     const content = response.choices[0].message.content.trim();
-    const pills = JSON.parse(stripMarkdownFences(content));
+    const parsed = JSON.parse(stripMarkdownFences(content));
 
-    // Validate shape: must be array of arrays
-    if (!Array.isArray(pills)) return products.map(() => []);
+    // Validate shape: must be array of objects
+    if (!Array.isArray(parsed)) return empty;
 
-    debugLog('\n========== PILL LABELS ==========');
+    debugLog('\n========== PRODUCT INSIGHTS ==========');
     products.forEach((p, i) => {
-      const labels = (pills[i] || []).map(pill => `${pill.label} (${pill.category})`).join(', ');
-      debugLog(`  ${p.title} → ${labels || '(none)'}`);
+      const entry = parsed[i] || {};
+      const labels = (entry.pills || []).map(pill => `${pill.label} (${pill.category})`).join(', ');
+      debugLog(`  ${p.title} → ${labels || '(none)'} | "${entry.reactionLine || '(none)'}"`);
     });
-    debugLog('=================================\n');
+    debugLog('======================================\n');
 
-    // Ensure we have an array for each product, cap at 2 pills
-    return products.map((_, i) => {
-      const productPills = pills[i];
-      if (!Array.isArray(productPills)) return [];
-      return productPills
+    const pills = products.map((_, i) => {
+      const entry = parsed[i];
+      if (!entry || !Array.isArray(entry.pills)) return [];
+      return entry.pills
         .filter(p => p && p.label && p.category)
         .slice(0, 2);
     });
+
+    const reactionLines = products.map((_, i) => {
+      const entry = parsed[i];
+      return (entry && typeof entry.reactionLine === 'string') ? entry.reactionLine : null;
+    });
+
+    return { pills, reactionLines };
   } catch (err) {
-    console.error('Pill label generation failed:', err.message);
-    return products.map(() => []);
+    console.error('Product insight generation failed:', err.message);
+    return empty;
   }
 }
