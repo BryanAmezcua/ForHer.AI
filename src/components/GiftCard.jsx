@@ -3,6 +3,12 @@
 import { ProductImage } from './ProductImage';
 import { ProfilePill } from './ProfilePill';
 
+function parseRating(raw) {
+  if (typeof raw === 'number') return raw.toFixed(1);
+  const match = String(raw).match(/([\d.]+)/);
+  return match ? parseFloat(match[1]).toFixed(1) : raw;
+}
+
 export function GiftCard({ gift, index, isTopPick }) {
   return (
     <div
@@ -16,6 +22,7 @@ export function GiftCard({ gift, index, isTopPick }) {
       {/* Product image */}
       <ProductImage
         src={gift.imageUrl}
+        imageUrls={gift.imageUrls}
         alt={gift.name}
         fallbackColor={gift.imageBg}
       />
@@ -53,17 +60,25 @@ export function GiftCard({ gift, index, isTopPick }) {
           {gift.name}
         </h3>
 
-        {/* Taste profile pills */}
-        {gift.matchedAttributes && gift.matchedAttributes.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mb-auto">
-            {gift.matchedAttributes.map((attr, i) => (
-              <ProfilePill key={i} label={attr.label} category={attr.category} />
-            ))}
+        {/* Rating */}
+        {gift.rating && (
+          <div className="flex items-center gap-1 mb-2 text-warm-gray-light">
+            <span className="text-amber-400 text-[11px] leading-none">&#9733;</span>
+            <span className="text-[11px] font-medium">{parseRating(gift.rating)}</span>
           </div>
         )}
 
-        {/* Spacer when no pills */}
-        {(!gift.matchedAttributes || gift.matchedAttributes.length === 0) && (
+        {/* Pills */}
+        {(gift.matchedAttributes?.length > 0 || gift.merchantBadges?.length > 0) ? (
+          <div className="flex flex-wrap gap-1.5 mb-auto">
+            {gift.matchedAttributes?.map((attr, i) => (
+              <ProfilePill key={`fit-${i}`} label={attr.label} category={attr.category} />
+            ))}
+            {gift.merchantBadges?.map((badge, i) => (
+              <ProfilePill key={`merch-${i}`} label={badge} category="merchant" />
+            ))}
+          </div>
+        ) : (
           <div className="mb-auto" />
         )}
 

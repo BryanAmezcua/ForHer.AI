@@ -25,33 +25,31 @@
 - Fade-up and staggered card animations
 - PDP confidence scoring rejects category/editorial/collection pages after ScrapingDog enrichment
 - Gift-set/bundle title filter rejects gift sets, gift boxes, sampler sets, etc. during pruning
-- Full product pipeline: taste profile → (optional clarification) → query generation → ScrapingDog Shopping search (cached) → dedup → prune (gift-set filter + rating/review scoring → top 16 pool) → enrich (ScrapingDog Immersive Product) + pills (parallel) → PDP scoring → top 9 display
+- Full product pipeline: taste profile → (optional clarification) → query generation → ScrapingDog Shopping search (cached) → dedup → prune (gift-set filter + rating/review scoring → top 16 pool) → enrich (ScrapingDog Immersive Product, batched 5 at a time) + pills (parallel) → PDP scoring → top 9 display
 - ScrapingDog enrichment provides real merchant URLs via store selection (picks best store per product based on PDP score, stock status, ratings, shipping)
+- Two-tier pill system on gift cards: LLM-generated gift-fit pills (interest, aesthetic, personality, context) + merchant badges (Free Shipping, Free Returns, X-Day Returns) extracted from store extensions
+- Star ratings displayed on cards (amber star + rating number, no review counts — avoids mismatched Google aggregates)
+- LLM pill prompt requires at least 1 pill per product (no more empty pill rows)
 
 ### What's NOT Working / Incomplete
 - "Adjust Preferences" button in results view has no functionality (commented out)
 - No follow-up/refinement conversation loop
-- Frontend does not yet display brand, rating, or reviews fields from enrichment (data is available in API response)
 
 ### Known TODOs
-1. Build UI for rating/reviews display on gift cards
-2. Implement refinement loop (Phase 2)
-3. Wire up "Adjust Preferences" button
+1. Implement refinement loop (Phase 2)
+2. Wire up "Adjust Preferences" button
 
 ### Recent Changes
-- **ScrapingDog migration** — Replaced Serper Shopping + Tavily enrichment with ScrapingDog Shopping API + Immersive Product API. New files: `search-scrapingdog.js`, `enrich-scrapingdog.js`. Deleted: `search-serper.js`, `enrich-serper.js`, `tavily.js`, `search-tavily.js`. Enrichment now uses store selection to pick best merchant per product (scoring on PDP signals, stock, ratings, shipping). Prune scoring enhanced with rating/reviews (confidence score replaces pure cluster size, new review volume component). Pool size 14→16. Cache schema updated with new fields (extractedPrice, rating, reviews, extensions, productId, immersiveUrl). Recommendation response now includes brand, rating, reviews fields.
-- **"Whiskey Lounge" dark theme overhaul** — Replaced light cream/sage/taupe palette with dark warm palette. New tokens: copper (#c8956c), warm-gray (#8a8380), warm-gray-light (#a09890), surface (#252220). Permanently dark (no light mode). All CSS variables, hardcoded colors in page.js, GiftCard, GiftCardSkeleton, ProfilePill, ProductImage, and recommendations route updated. Hearts removed, spinning sparkle replaced with pulsing ring.
-- **Clarification system** — Taste profile prompt now returns an optional `clarification` field with a high-ROI follow-up question + 3 options (each with label + patch object). Only triggered when description is missing high-impact context (budget, interests, occasion).
-- **New `/api/taste-profile` endpoint** — Separates taste profile generation from the full recommendation pipeline
-- **Two-step submit flow** — Client calls `/api/taste-profile` first; if clarification needed, shows question + animated pills; user's selection patches the taste profile client-side; then calls `/api/recommendations` with the pre-built profile
-- **`/api/recommendations` accepts pre-built taste profile** — Skips `generateTasteProfile()` when `tasteProfile` is provided in request body
-- **Enrichment pool + PDP scoring** — `ENRICH_POOL_SIZE = 16` in prune-serper.js (over-fetch for enrichment buffer); PDP confidence scoring in score-pdp.js filters non-product pages; `DISPLAY_COUNT = 9` final results; gift-set title rejection added to pruner
-- **Mobile-first clarifying UI** — Pills stack vertically on mobile (`flex-col`), horizontal on `sm:` breakpoint; comfortable touch targets (`py-3`); responsive padding throughout
-- **Pill generation refactored** — Replaced token-matching pill system with LLM-generated pills. One call per request, runs in parallel with ScrapingDog enrichment. Produces 1-2 pills per product with categories (interest, aesthetic, personality, context) for ProfilePill color mapping. Pruner simplified: `_matchMeta` removed, `aestheticOverlap` removed, `interestOverlap` returns count only (aliases still used for scoring).
+- **Multi-image product gallery** — ProductImage now supports a swipeable/clickable gallery when `imageUrls` (from ScrapingDog `thumbnails[]`) has 2+ images. Dot indicators at bottom, chevron arrows on desktop hover, touch swipe on mobile. Preloads adjacent images. Degrades gracefully to single-image mode when only 1 image available. Data flows: `enrich-scrapingdog.js` passes `imageUrls: data.thumbnails || []`, route passes `imageUrls` only when 2+ images exist.
+- **Star ratings on cards** — GiftCard now shows `★ 4.7` when rating data exists. Prefers merchant-level rating from Immersive Product, falls back to Google aggregate. Review counts removed entirely to avoid showing misleading Google aggregate counts that don't match what the user sees on the merchant page.
+- **Two-tier pill system** — Gift cards now show two types of pills: (1) LLM-generated gift-fit pills explaining why the product matches the recipient, and (2) merchant badges extracted from store extensions (Free Shipping, Free Returns, X-Day Returns). Merchant pills use a muted sage-green style to visually distinguish from gift-fit pills. LLM prompt updated to require at least 1 pill per product.
+- **ScrapingDog enrichment batching** — Immersive Product API calls batched 5 at a time (LITE plan concurrency limit) instead of all-at-once, preventing rate limit failures.
+- **ScrapingDog migration** — Replaced Serper Shopping + Tavily enrichment with ScrapingDog Shopping API + Immersive Product API. New files: `search-scrapingdog.js`, `enrich-scrapingdog.js`. Deleted: `search-serper.js`, `enrich-serper.js`, `tavily.js`, `search-tavily.js`. Enrichment now uses store selection to pick best merchant per product (scoring on PDP signals, stock, ratings, shipping). Prune scoring enhanced with rating/reviews (confidence score replaces pure cluster size, new review volume component). Pool size 14→16. Cache schema updated with new fields (extractedPrice, rating, reviews, extensions, productId, immersiveUrl).
+- **Previously:** "Whiskey Lounge" dark theme, clarification system, two-step submit flow, enrichment pool + PDP scoring, mobile-first clarifying UI, LLM pill generation
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI for all LLM calls (model configured in `src/lib/openai.js`)
 - **MongoDB in use** for ScrapingDog shopping cache; broader persistence deferred to Phase 3
-- **ScrapingDog active** for product search (Shopping API) and enrichment (Immersive Product API for merchant URLs + descriptions + store data)
+- **ScrapingDog active** for product search (Shopping API) and enrichment (Immersive Product API for merchant URLs + descriptions + store data). LITE plan: 5 concurrent requests, ~2,000 requests/month.
 - **Client-side patching** — Clarification answers are patched into the taste profile client-side (no re-run of LLM). May revisit for free-text answers later.
-- **Next step:** Build UI for ratings/reviews, test end-to-end pipeline quality with ScrapingDog data
+- **Next step:** Test end-to-end pipeline quality with ScrapingDog data, evaluate card UI polish

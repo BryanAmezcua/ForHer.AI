@@ -7,15 +7,15 @@ Rules:
 - Use "interest" when connecting to a specific hobby, passion, or interest from the profile
 - Use "aesthetic" when it matches her style or aesthetic preferences
 - Use "personality" when it reflects her personality traits or gifting context
-- Use "context" for quality signals like "Handmade" or "Small-Batch", or occasion fit
+- Use "context" for quality signals like "Handmade" or "Small-Batch", occasion fit, or general gifting appeal (e.g. "Thoughtful Gift", "Unique Find", "Crowd Pleaser")
 - Do NOT restate the product name or its obvious category (e.g. don't say "Coffee Lover" for a coffee maker, or "Bath" for a bath product)
 - Each pill should add context the user can't already see from the product name
-- Connect each pill to something specific in the taste profile — do not invent traits not present in the profile
+- Prefer connecting pills to something specific in the taste profile, but if the connection is weak you may use a "context" pill that highlights the product's gifting appeal
+- Every product MUST have at least 1 pill — always find something meaningful to say
 - Keep labels concise and title-cased (e.g. "Baking Enthusiast", "Minimalist", "Self-Care")
-- If a product has no clear connection to the profile, return an empty array for it — do not force a pill
 
-Return ONLY a JSON array of arrays. Each inner array corresponds to the product at that index and contains 0-2 pill objects. Example:
-[[{"label":"Baking Enthusiast","category":"interest"}],[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],[]]`;
+Return ONLY a JSON array of arrays. Each inner array corresponds to the product at that index and contains 1-2 pill objects. Example:
+[[{"label":"Baking Enthusiast","category":"interest"}],[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],[{"label":"Unique Find","category":"context"}]]`;
 
 /**
  * Generate pill labels for all products in a single LLM call.
@@ -47,7 +47,7 @@ export async function generatePillLabels(products, tasteProfile) {
         { role: 'user', content: userMessage },
       ],
       temperature: 0.3,
-      max_tokens: 400,
+      max_tokens: 600,
     });
 
     const content = response.choices[0].message.content.trim();

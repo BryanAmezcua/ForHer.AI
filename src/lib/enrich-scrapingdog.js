@@ -107,6 +107,7 @@ async function enrichOne(product) {
       merchantName: null,
       description: null,
       brand: null,
+      imageUrls: [],
       merchantRating: null,
       merchantReviews: null,
       merchantExtensions: [],
@@ -125,13 +126,16 @@ async function enrichOne(product) {
 
     const bestStore = selectBestStore(data.stores);
 
+    const imageUrls = data.thumbnails || [];
+
     if (bestStore) {
       return {
         ...product,
         merchantUrl:        bestStore.link,
         merchantName:       bestStore.name,
         description:        data.about_the_product?.description || null,
-        imageUrl:           data.thumbnails?.[0] || product.imageUrl,
+        imageUrl:           imageUrls[0] || product.imageUrl,
+        imageUrls,
         brand:              data.brand || null,
         merchantRating:     bestStore.ratings || null,
         merchantReviews:    bestStore.reviews || null,
@@ -145,7 +149,8 @@ async function enrichOne(product) {
       merchantUrl: product.link,
       merchantName: null,
       description: data.about_the_product?.description || null,
-      imageUrl: data.thumbnails?.[0] || product.imageUrl,
+      imageUrl: imageUrls[0] || product.imageUrl,
+      imageUrls,
       brand: data.brand || null,
       merchantRating: null,
       merchantReviews: null,
@@ -164,6 +169,7 @@ function fallback(product) {
     merchantName: null,
     description: null,
     brand: null,
+    imageUrls: [],
     merchantRating: null,
     merchantReviews: null,
     merchantExtensions: [],

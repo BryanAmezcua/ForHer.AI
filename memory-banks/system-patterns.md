@@ -118,6 +118,7 @@ The main page uses a `phase` state to switch between five views:
 - Store selection algorithm picks best store: reject out-of-stock, score on PDP signals (+2), ratings (+1), in-stock (+1), free shipping (+0.5), free returns (+0.5), tiebreak by lowest total_price
 - Also extracts: product description, brand, thumbnail URLs
 - Fallback: if no stores survive or API fails, keeps Google Shopping link + null description
+- Batched 5 at a time (ScrapingDog LITE plan concurrency limit)
 - Cost: ~5 credits per Immersive Product call (16 calls = 80 credits per request)
 
 **Shopping Cache (MongoDB):**
@@ -145,15 +146,16 @@ Each recommendation object contains:
   name: string,       // Product name
   price: string,      // Display price
   description: string,// Product description from Immersive Product
-  brand: string|null, // Brand name (NEW)
-  rating: string|null,// e.g. "4.7/5" (NEW — prefers merchant-level, falls back to product-level)
-  reviews: string|null,// e.g. "237" (NEW)
+  brand: string|null, // Brand name
+  rating: string|null,// e.g. "4.7/5" (prefers merchant-level, falls back to Google aggregate)
   tag: string,        // Category label (e.g., "TOP PICK", "GREAT FIND")
-  matchedAttributes: [{ label: string, category: string }], // Up to 2 taste profile pills
+  matchedAttributes: [{ label: string, category: string }], // Up to 2 LLM-generated gift-fit pills
+  merchantBadges: string[],  // e.g. ["Free Shipping", "30-Day Returns"] — from store extensions
   ctaText: string,    // Button text (e.g., "View Product")
   ctaColor: string,   // Hex color for CTA button
   url: string,        // Purchase link (real merchant URL from store selection)
-  imageUrl: string,   // Product image URL
+  imageUrl: string,   // Product image URL (primary/hero)
+  imageUrls: string[],// All product thumbnails (empty if ≤1 image; gallery triggers at 2+)
   imageBg: string,    // Fallback background color
 }
 ```
@@ -195,6 +197,7 @@ Brand color aliases:
 | `personality` | sage/12 | sage (#8fa38a) |
 | `budget` | warm-gray/12 | warm-gray (#8a8380) |
 | `context` | white/6 | warm-gray (#8a8380) |
+| `merchant` | sage-green/10 | muted sage (#7a9a7a) |
 
 ### Animations
 - `fade-up` — Entry animation for sections (opacity + translateY)

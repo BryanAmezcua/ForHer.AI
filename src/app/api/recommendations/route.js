@@ -8,6 +8,34 @@ import { enrichProducts } from '@/lib/enrich-scrapingdog';
 import { generatePillLabels } from '@/lib/generate-pills';
 import { scorePDP } from '@/lib/score-pdp';
 
+// ── Extract useful merchant badges from store extensions ──
+const BADGE_PATTERNS = [
+  { re: /free shipping/i,   label: 'Free Shipping' },
+  { re: /free delivery/i,   label: 'Free Shipping' },
+  { re: /free returns?/i,   label: 'Free Returns' },
+  { re: /(\d+)[- ]day returns?/i, label: match => `${match[1]}-Day Returns` },
+];
+
+function extractMerchantBadges(extensions) {
+  if (!extensions || extensions.length === 0) return [];
+  const badges = [];
+  const seen = new Set();
+  for (const ext of extensions) {
+    for (const { re, label } of BADGE_PATTERNS) {
+      const match = ext.match(re);
+      if (match) {
+        const text = typeof label === 'function' ? label(match) : label;
+        if (!seen.has(text)) {
+          seen.add(text);
+          badges.push(text);
+        }
+        break;
+      }
+    }
+  }
+  return badges;
+}
+
 const MOCK_RECOMMENDATIONS = [
   {
     name: 'Hand-Thrown Earthware Set',
@@ -116,14 +144,15 @@ export async function POST(request) {
       description: p.description || '',
       brand: p.brand || null,
       rating: p.merchantRating || p.rating || null,
-      reviews: p.merchantReviews || p.reviews || null,
       tag: i === 0 ? 'TOP PICK' : 'GREAT FIND',
       ctaText: 'View Product',
       ctaColor: '#c8956c',
       url: p.merchantUrl,
       imageUrl: p.imageUrl,
+      imageUrls: p.imageUrls?.length > 1 ? p.imageUrls : [],
       imageBg: '#252220',
       matchedAttributes: pillLabels[p._originalIndex] || [],
+      merchantBadges: extractMerchantBadges(p.merchantExtensions),
     }));
 
     // Build meta from taste profile

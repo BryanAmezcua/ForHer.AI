@@ -4,6 +4,7 @@ const CATEGORY_STYLES = {
   personality: { bg: 'rgba(143,163,138,0.12)', text: '#8fa38a' },
   budget:      { bg: 'rgba(138,131,128,0.12)', text: '#8a8380' },
   context:     { bg: 'rgba(255,255,255,0.06)', text: '#8a8380' },
+  merchant:    { bg: 'rgba(130,170,130,0.10)', text: '#7a9a7a' },
 };
 
 export function ProfilePill({ label, category }) {

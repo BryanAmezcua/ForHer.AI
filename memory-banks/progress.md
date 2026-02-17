@@ -23,15 +23,15 @@
 #### Backend (Minimal)
 - [x] Single API endpoint: POST `/api/recommendations`
 - [x] AI processes free-text input to extract profile attributes (taste profile via OpenAI, model configured in `src/lib/openai.js`)
-- [x] Serper Shopping API integration (3 broad queries, 10 results each)
-- [x] MongoDB caching for Serper results (48h TTL, stopword+stemming normalization)
-- [x] Serper shopping deduplication (Jaccard similarity + price clustering, cluster size tracking)
-- [x] Serper shopping pruning (weighted scoring on 5 dimensions, top 10 cutoff)
-- [x] Deleted old Tavily pipeline (retained tavily.js + search-tavily.js for enrichment)
-- [x] Removed Deep Research toggle — Serper is now the sole pipeline
-- [x] Product enrichment via Tavily search (merchant URLs + descriptions, 10 calls per request)
+- [x] ScrapingDog Shopping API integration (3 broad queries, ~40+ results each)
+- [x] MongoDB caching for shopping results (48h TTL, stopword+stemming normalization)
+- [x] Shopping deduplication (Jaccard similarity + price clustering, cluster size tracking)
+- [x] Shopping pruning (weighted scoring on 6 dimensions incl. rating/reviews, top 16 cutoff)
+- [x] ScrapingDog Immersive Product enrichment (merchant URLs + descriptions + store selection, batched 5 at a time)
 - [x] Real product data wired into recommendations (no more mock data)
-- [x] "Why this fits" pills per product (up to 3 per card — interest, aesthetic, quality, budget, personality)
+- [x] Two-tier pill system: LLM gift-fit pills + merchant badges (Free Shipping, Free Returns, etc.)
+- [x] Star ratings on gift cards (prefers merchant rating, falls back to Google aggregate, no review counts)
+- [x] Multi-image product gallery (swipe/click through thumbnails from Immersive Product API)
 - [ ] Matches against curated gift database
 
 #### Polish & UX
