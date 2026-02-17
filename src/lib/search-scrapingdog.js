@@ -1,6 +1,7 @@
 import { createHash } from 'crypto';
 import { connectDB } from './mongoose';
 import { ShoppingCache } from './models/shopping-cache';
+import { debugLog } from './debug';
 
 const API_KEY = process.env.SCRAPINGDOG_API_KEY;
 const SCRAPINGDOG_ENDPOINT = 'https://api.scrapingdog.com/google_shopping';
@@ -106,7 +107,7 @@ async function createMongoDocument(rawQuery, normalizedQuery, cacheKey, normaliz
   };
 
   await ShoppingCache.findByIdAndUpdate(cacheKey, doc, { upsert: true });
-  console.log(`  [CACHE] Saved ${normalizedResults.length} results for "${rawQuery}"`);
+  debugLog(`  [CACHE] Saved ${normalizedResults.length} results for "${rawQuery}"`);
 }
 
 // ── Execute a single query with cache check ──
@@ -117,12 +118,12 @@ async function executeOneQuery(rawQuery) {
   // Check cache first
   const cached = await ShoppingCache.findById(cacheKey).lean();
   if (cached) {
-    console.log(`  [CACHE HIT] "${rawQuery}" → ${cached.results.length} cached results`);
+    debugLog(`  [CACHE HIT] "${rawQuery}" → ${cached.results.length} cached results`);
     return { query: rawQuery, shopping: cached.results, fromCache: true };
   }
 
   // Cache miss — call ScrapingDog
-  console.log(`  [CACHE MISS] "${rawQuery}" → calling ScrapingDog API`);
+  debugLog(`  [CACHE MISS] "${rawQuery}" → calling ScrapingDog API`);
 
   const params = new URLSearchParams({
     api_key: API_KEY,
@@ -141,7 +142,7 @@ async function executeOneQuery(rawQuery) {
   const data = await response.json();
   const shoppingResults = (data.shopping_results || []).map(normalizeItem);
 
-  console.log(`  [API] "${rawQuery}" → ${shoppingResults.length} results`);
+  debugLog(`  [API] "${rawQuery}" → ${shoppingResults.length} results`);
 
   // Save to MongoDB
   await createMongoDocument(rawQuery, normalized, cacheKey, shoppingResults);
@@ -154,9 +155,9 @@ export async function getAllCachedResults() {
   await connectDB();
   const docs = await ShoppingCache.find({}).lean();
   const allResults = docs.flatMap(doc => doc.results || []);
-  console.log(`\n========== CACHE-ONLY MODE ==========`);
-  console.log(`Loaded ${allResults.length} products from ${docs.length} cached queries`);
-  console.log(`=====================================\n`);
+  debugLog(`\n========== CACHE-ONLY MODE ==========`);
+  debugLog(`Loaded ${allResults.length} products from ${docs.length} cached queries`);
+  debugLog(`=====================================\n`);
   return [{ query: '(cached)', shopping: allResults, fromCache: true }];
 }
 
@@ -164,9 +165,9 @@ export async function getAllCachedResults() {
 export async function executeScrapingDogQueries(deepQueries) {
   const { queries } = deepQueries;
 
-  console.log('\n========== SCRAPINGDOG QUERIES ==========');
-  console.log(queries.map(q => q.q));
-  console.log('==========================================\n');
+  debugLog('\n========== SCRAPINGDOG QUERIES ==========');
+  debugLog(queries.map(q => q.q));
+  debugLog('==========================================\n');
 
   await connectDB();
 

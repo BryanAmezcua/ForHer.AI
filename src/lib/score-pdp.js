@@ -11,6 +11,9 @@
  *   -1 to +2   → pass as-is (gray zone, keep)
  */
 
+export const PDP_REJECT_THRESHOLD = -2; // score <= this → reject as non-product page
+export const PDP_ACCEPT_THRESHOLD = 3;  // score >= this → high-confidence product page
+
 const SEARCH_PATH_SIGNALS = ['/search', '/results', '/sr', '/browse'];
 const SEARCH_PARAMS = ['q', 'filter', 'category'];
 const EDITORIAL_PATHS = ['/gift-guide/', '/best-sellers/', '/top-10/', '/ideas/', '/edit/'];

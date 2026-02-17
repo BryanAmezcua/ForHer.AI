@@ -1,3 +1,11 @@
+import { parsePrice } from './parse-price';
+
+// ── Clustering thresholds ──
+const JACCARD_THRESHOLD = 0.55;   // Min title similarity to merge into same cluster
+const PRICE_PROXIMITY = 1.3;      // Max price ratio (30%) to consider same product
+const IMAGE_BONUS = 1000;         // Listing score bonus for having an image
+const PRICE_CAP = 500;            // Max price-inversion score (lower price = higher score)
+
 // ── Junk words that retailers pad into shopping titles ──
 const JUNK_WORDS = new Set([
   'free', 'shipping', 'sale', 'new', 'best', 'seller', 'bestseller',
@@ -44,13 +52,6 @@ function normalizeTitle(raw) {
     .map(w => SYNONYMS.get(w) || w);
 }
 
-// ── Parse price string to number ──
-function parsePrice(priceStr) {
-  if (!priceStr) return null;
-  const match = priceStr.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
-  return match ? parseFloat(match[1]) : null;
-}
-
 // ── Jaccard similarity: shared tokens / total unique tokens ──
 function jaccardSimilarity(tokensA, tokensB) {
   if (tokensA.length === 0 && tokensB.length === 0) return 1;
@@ -72,30 +73,29 @@ function jaccardSimilarity(tokensA, tokensB) {
 function pricesAreClose(priceA, priceB) {
   if (priceA === null || priceB === null) return true; // no price = can't disqualify
   const ratio = Math.max(priceA, priceB) / Math.min(priceA, priceB);
-  return ratio <= 1.3;
+  return ratio <= PRICE_PROXIMITY;
 }
 
 // ── Score a listing for winner selection (lower price wins, image preferred) ──
 function scoreListing(item, priceValue) {
   let score = 0;
-  if (item.imageUrl) score += 1000;
-  // Invert price so lower price = higher score (cap at 500 to avoid dominating)
-  if (priceValue !== null) score += Math.max(0, 500 - priceValue);
+  if (item.imageUrl) score += IMAGE_BONUS;
+  if (priceValue !== null) score += Math.max(0, PRICE_CAP - priceValue);
   return score;
 }
 
 /**
- * Deduplicates Serper shopping results across all queries.
+ * Deduplicates shopping results across all queries.
  * Flattens results from all queries, clusters by title similarity + price proximity,
  * and returns one winner per cluster.
  *
- * @param {Array} serperResults - Array of { query, shopping: [...], fromCache }
+ * @param {Array} searchResults - Array of { query, shopping: [...], fromCache }
  * @returns {Array} Deduplicated flat array of shopping items
  */
-export function dedupeSerperResults(serperResults) {
+export function dedupeProducts(searchResults) {
   // Step 1: Flatten all shopping results into one array
   const allItems = [];
-  for (const result of serperResults) {
+  for (const result of searchResults) {
     if (result.error) continue;
     for (const item of (result.shopping || [])) {
       allItems.push(item);
@@ -123,7 +123,7 @@ export function dedupeSerperResults(serperResults) {
       const rep = cluster[0];
       const similarity = jaccardSimilarity(entry.tokens, rep.tokens);
 
-      if (similarity >= 0.55 && pricesAreClose(entry.priceValue, rep.priceValue)) {
+      if (similarity >= JACCARD_THRESHOLD && pricesAreClose(entry.priceValue, rep.priceValue)) {
         cluster.push(entry);
         merged = true;
         break;
@@ -151,14 +151,6 @@ export function dedupeSerperResults(serperResults) {
     bestEntry.item.clusterSize = cluster.length;
     return bestEntry.item;
   });
-
-  /* const dupes = allItems.length - winners.length;
-  console.log(`\n========== SERPER DEDUP ==========`);
-  console.log(`${allItems.length} total items → ${winners.length} unique products (${dupes} duplicates removed)`);
-  for (const winner of winners) {
-    console.log(`  - ${winner.title} | ${winner.price} (cluster: ${winner.clusterSize})`);
-  }
-  console.log(`==================================\n`); */
 
   return winners;
 }
