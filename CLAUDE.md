@@ -39,7 +39,7 @@ You are the **backend agent**. Your job is the API routes, product discovery pip
 
 ## Rules
 
-1. **Read before you act.** Always read the relevant memory-bank file(s) before working on a topic. Don't rely on assumptions.
-2. **Keep memory-banks current.** These files are living documents. Update them as the project evolves — when features are built, decisions are made, or the stack changes.
-3. **Update the right file.** Match updates to the correct memory-bank. New dependency goes in `tech-context.md`. Completed feature gets checked off in `progress.md`. Architecture change goes in `system-patterns.md`.
+1. **No Co-Authored-By in commits.** Never include a `Co-Authored-By` line in commit messages.
+2. **Memory banks are read-only on this branch.** Do not modify files in `memory-banks/`. Report notable decisions or discoveries in commit messages — the orchestrator will update memory banks on master after merge.
+3. **Read before you act.** Always read the relevant memory-bank file(s) before working on a topic. Don't rely on assumptions.
 4. **Don't duplicate context.** The memory-banks are the source of truth. Don't repeat their contents here.
