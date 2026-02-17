@@ -18,7 +18,7 @@ function SingleImage({ src, alt, fallbackColor }) {
 
   return (
     <div
-      className="relative aspect-[4/3] overflow-hidden"
+      className="group relative aspect-[4/3] overflow-hidden"
       style={{ backgroundColor: fallbackColor || '#252220' }}
     >
       {src && status !== 'error' && (
@@ -41,6 +41,8 @@ function SingleImage({ src, alt, fallbackColor }) {
           <span className="text-white/20 text-5xl select-none">&#10022;</span>
         </div>
       )}
+      {/* Hover shimmer sweep */}
+      <div className="absolute inset-0 product-image-shimmer pointer-events-none" />
     </div>
   );
 }
@@ -192,6 +194,9 @@ function Gallery({ images, alt, fallbackColor }) {
           <polyline points="9 6 15 12 9 18" />
         </svg>
       </button>
+
+      {/* Hover shimmer sweep */}
+      <div className="absolute inset-0 product-image-shimmer pointer-events-none" />
 
       {/* Dot indicators */}
       <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1.5 pb-2">

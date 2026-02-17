@@ -2,6 +2,7 @@
 
 import { ProductImage } from './ProductImage';
 import { ProfilePill } from './ProfilePill';
+import { MatchRing } from './MatchRing';
 
 function parseRating(raw) {
   if (typeof raw === 'number') return raw.toFixed(1);
@@ -9,13 +10,56 @@ function parseRating(raw) {
   return match ? parseFloat(match[1]).toFixed(1) : raw;
 }
 
+/* ── Badge icon SVGs ── */
+function BadgeIcon({ type }) {
+  const size = 12;
+  if (type === 'confidence') {
+    // Sparkle
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className="text-copper flex-shrink-0">
+        <path d="M8 0l1.796 5.204L15 6.5l-4 3.296L12.472 16 8 12.4 3.528 16 5 9.796 1 6.5l5.204-1.296z" />
+      </svg>
+    );
+  }
+  if (type === 'social') {
+    // Heart
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className="text-warm-gray-light flex-shrink-0">
+        <path d="M8 14s-5.5-3.5-5.5-7A3.5 3.5 0 0 1 8 4.5 3.5 3.5 0 0 1 13.5 7C13.5 10.5 8 14 8 14z" />
+      </svg>
+    );
+  }
+  if (type === 'occasion') {
+    // Gift box
+    return (
+      <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-[#8fa38a] flex-shrink-0">
+        <rect x="2" y="7" width="12" height="7" rx="1" />
+        <rect x="1" y="5" width="14" height="2.5" rx="0.5" />
+        <line x1="8" y1="5" x2="8" y2="14" />
+        <path d="M8 5C8 5 6 3 5 2.5S3 2.5 3 3.5 4 5 5 5" />
+        <path d="M8 5C8 5 10 3 11 2.5S13 2.5 13 3.5 12 5 11 5" />
+      </svg>
+    );
+  }
+  // Fallback: dot (matches original behavior)
+  return null;
+}
+
+const BADGE_COLORS = {
+  confidence: 'text-copper',
+  social: 'text-warm-gray-light',
+  occasion: 'text-[#8fa38a]',
+};
+
 export function GiftCard({ gift, index, isTopPick }) {
+  const hasBadge = gift.badgeLabel && gift.badgeType;
+
   return (
     <div
-      className={`bg-white/[0.05] backdrop-blur-sm rounded-2xl overflow-hidden border flex flex-col animate-fade-up transition-all duration-300 hover:-translate-y-1 ${
+      className={`rounded-2xl overflow-hidden flex flex-col animate-card-entrance transition-all duration-300 ${
         isTopPick
-          ? 'border-copper/40 shadow-[0_0_20px_rgba(200,149,108,0.15),0_0_40px_rgba(200,149,108,0.08)] hover:shadow-[0_0_24px_rgba(200,149,108,0.25),0_0_48px_rgba(200,149,108,0.12)] ring-1 ring-copper/15'
-          : 'border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
+          ? 'card-glow-border backdrop-blur-sm hover:-translate-y-1.5 hover:shadow-[0_0_24px_rgba(200,149,108,0.25),0_0_48px_rgba(200,149,108,0.12)]'
+          : 'bg-white/[0.05] backdrop-blur-sm border border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)] hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
       }`}
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}
     >
@@ -29,13 +73,18 @@ export function GiftCard({ gift, index, isTopPick }) {
 
       {/* Card body */}
       <div className="p-5 flex flex-col flex-1">
-        {/* Tag + price */}
+        {/* Tag / Badge + price + match ring */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5">
-            {gift.matchScore ? (
-              <span className="text-[10px] uppercase tracking-[0.08em] font-semibold text-copper">
-                &bull; {gift.matchScore}% Match
-              </span>
+          <div className="flex items-center gap-1.5 animate-badge-pop">
+            {hasBadge ? (
+              <>
+                <BadgeIcon type={gift.badgeType} />
+                <span className={`text-[10px] uppercase tracking-[0.08em] font-semibold ${
+                  BADGE_COLORS[gift.badgeType] || 'text-warm-gray-light'
+                }`}>
+                  {gift.badgeLabel}
+                </span>
+              </>
             ) : (
               <>
                 <span
@@ -50,15 +99,27 @@ export function GiftCard({ gift, index, isTopPick }) {
               </>
             )}
           </div>
-          <span className="text-sm font-bold text-foreground">
-            {gift.price}
-          </span>
+          <div className="flex items-center gap-2.5">
+            {gift.matchScore >= 85 && (
+              <MatchRing score={gift.matchScore} />
+            )}
+            <span className="text-sm font-bold text-foreground">
+              {gift.price}
+            </span>
+          </div>
         </div>
 
         {/* Product name */}
-        <h3 className="text-[15px] font-bold text-foreground leading-snug mb-2">
+        <h3 className="text-[15px] font-bold text-foreground leading-snug mb-1">
           {gift.name}
         </h3>
+
+        {/* Reaction prediction line */}
+        {gift.reactionLine && (
+          <p className="text-[12px] italic text-warm-gray-light/80 mb-2 leading-relaxed">
+            &ldquo;{gift.reactionLine}&rdquo;
+          </p>
+        )}
 
         {/* Rating */}
         {gift.rating && (
@@ -84,7 +145,7 @@ export function GiftCard({ gift, index, isTopPick }) {
 
         {/* CTA button */}
         <button
-          className="w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold transition-all duration-200 hover:brightness-[0.92] hover:shadow-[0_4px_16px_rgba(200,149,108,0.2)] cursor-pointer"
+          className="w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_16px_rgba(200,149,108,0.3)] active:scale-[0.98] cursor-pointer"
           style={{ backgroundColor: gift.ctaColor }}
           onClick={() => {
             if (gift.url && gift.url !== '#') {

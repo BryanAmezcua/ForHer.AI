@@ -45,6 +45,8 @@
   --animate-fade-up: fade-up 0.8s ease both;
   --animate-spin-slow: spin-slow 3s linear infinite;
   --animate-pulse-ring: pulse-ring 1.8s ease-in-out infinite;
+  --animate-card-entrance: card-entrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-badge-pop: badge-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 }
 
 :root {
@@ -97,6 +99,146 @@
 
 .skeleton-shimmer {
   animation: skeleton-shimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Card entrance (blur-to-sharp materialization) ── */
+@keyframes card-entrance {
+  0% {
+    opacity: 0;
+    transform: translateY(24px) scale(0.97);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-card-entrance {
+  animation: card-entrance 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ── Badge pop-in ── */
+@keyframes badge-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(-4px);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.05) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-badge-pop {
+  animation: badge-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+/* ── Confidence pulse (match ring breathing glow) ── */
+@keyframes confidence-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(200, 149, 108, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(200, 149, 108, 0);
+  }
+}
+
+.confidence-ring-pulse {
+  animation: confidence-pulse 2s ease-in-out infinite;
+  border-radius: 50%;
+}
+
+/* ── Conic-gradient rotating border (top pick card) ── */
+@property --border-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes rotate-border {
+  to {
+    --border-angle: 360deg;
+  }
+}
+
+.card-glow-border {
+  --border-angle: 0deg;
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(#252321, #252321) padding-box,
+    conic-gradient(
+      from var(--border-angle),
+      #c8956c 0%,
+      #e8c9a8 25%,
+      #c8956c 50%,
+      #a0714e 75%,
+      #c8956c 100%
+    ) border-box;
+  animation: rotate-border 4s linear infinite;
+}
+
+/* ── Image shimmer sweep (hover) ── */
+@keyframes shimmer-sweep {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 150%;
+  }
+}
+
+.product-image-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(200, 149, 108, 0.08) 50%,
+    transparent 70%
+  );
+  transform: skewX(-25deg);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.group:hover .product-image-shimmer::after {
+  animation: shimmer-sweep 0.6s ease forwards;
+}
+
+/* ── Warm copper skeleton shimmer ── */
+@keyframes skeleton-shimmer-warm {
+  0% { background-position: -400% 0; }
+  100% { background-position: 400% 0; }
+}
+
+.skeleton-shimmer-warm {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(200, 149, 108, 0.06) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 400% 100%;
+  animation: skeleton-shimmer-warm 1.5s ease-in-out infinite;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer base {
