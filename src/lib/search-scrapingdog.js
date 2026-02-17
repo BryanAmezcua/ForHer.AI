@@ -149,6 +149,17 @@ async function executeOneQuery(rawQuery) {
   return { query: rawQuery, shopping: shoppingResults, fromCache: false };
 }
 
+// ── Public: grab all cached results from MongoDB (cache-only mode) ──
+export async function getAllCachedResults() {
+  await connectDB();
+  const docs = await ShoppingCache.find({}).lean();
+  const allResults = docs.flatMap(doc => doc.results || []);
+  console.log(`\n========== CACHE-ONLY MODE ==========`);
+  console.log(`Loaded ${allResults.length} products from ${docs.length} cached queries`);
+  console.log(`=====================================\n`);
+  return [{ query: '(cached)', shopping: allResults, fromCache: true }];
+}
+
 // ── Public: execute all deep queries ──
 export async function executeScrapingDogQueries(deepQueries) {
   const { queries } = deepQueries;

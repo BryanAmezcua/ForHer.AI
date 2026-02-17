@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
 import { generateDeepQueries } from '@/lib/search-queries-deep';
-import { executeScrapingDogQueries } from '@/lib/search-scrapingdog';
+import { executeScrapingDogQueries, getAllCachedResults } from '@/lib/search-scrapingdog';
 import { dedupeSerperResults } from '@/lib/dedupe-serper';
 import { pruneSerperResults, DISPLAY_COUNT } from '@/lib/prune-serper';
 import { enrichProducts } from '@/lib/enrich-scrapingdog';
@@ -86,76 +86,44 @@ export async function POST(request) {
   }
 
   try {
-    // Step 1: Use pre-built taste profile or generate one
+    // ═══════════════════════════════════════════════════════════════════
+    // CACHE-ONLY MODE: Skip all ScrapingDog API calls to save credits
+    // during UI rebuild. Pulls any cached results from MongoDB instead.
+    // To restore normal mode: uncomment the original pipeline below
+    // and comment out / remove this cache-only block.
+    // ═══════════════════════════════════════════════════════════════════
+
     const tasteProfile = providedProfile
       ? { ...providedProfile, clarification: undefined }
       : await generateTasteProfile(description);
 
-    // Step 2: Generate broad queries from taste profile
-    const deepQueries = await generateDeepQueries(tasteProfile);
-    console.log('\n========== DEEP RESEARCH QUERIES ==========');
-    console.log(JSON.stringify(deepQueries, null, 2));
-    console.log('============================================\n');
+    // Grab all cached products from MongoDB (ignores query matching)
+    const cachedResults = await getAllCachedResults();
 
-    // Step 3: Execute queries via ScrapingDog Shopping API (cached)
-    const serperResults = await executeScrapingDogQueries(deepQueries);
-
-    // Step 4: Deduplicate across queries
-    const uniqueProducts = dedupeSerperResults(serperResults);
-
-    // Step 5: Prune to top 16 (enrichment pool)
+    // Still run dedup + prune so we get a sensible set of products
+    const uniqueProducts = dedupeSerperResults(cachedResults);
     const prunedProducts = pruneSerperResults(uniqueProducts, tasteProfile);
 
-    // Step 6: Enrich products + generate pill labels in parallel
-    const [enrichedProducts, pillLabels] = await Promise.all([
-      enrichProducts(prunedProducts),
-      generatePillLabels(prunedProducts, tasteProfile),
-    ]);
+    // Skip enrichment (no Immersive Product API calls) — use cached data as-is
+    const finalProducts = prunedProducts.slice(0, DISPLAY_COUNT);
 
-    // Tag each enriched product with its original pruned index (for pill mapping)
-    const enrichedWithIndex = enrichedProducts.map((p, i) => ({ ...p, _originalIndex: i }));
-
-    // Step 6.5: PDP confidence scoring — reject non-product pages
-    const pdpScored = enrichedWithIndex.map(p => ({
-      ...p,
-      _pdpScore: scorePDP({ url: p.merchantUrl, title: p.title, price: p.price, snippet: p.description }),
-    }));
-
-    const pdpRejected = pdpScored.filter(p => p._pdpScore <= -2);
-    const pdpPassed = pdpScored.filter(p => p._pdpScore > -2);
-
-    console.log(`\n========== PDP SCORING ==========`);
-    for (const p of pdpScored) {
-      const status = p._pdpScore <= -2 ? 'REJECT' : p._pdpScore >= 3 ? 'ACCEPT' : 'PASS';
-      console.log(`  [${p._pdpScore >= 0 ? '+' : ''}${p._pdpScore}] ${status} — ${p.title} (${p.merchantUrl})`);
-    }
-    if (pdpRejected.length > 0) {
-      console.log(`  ${pdpRejected.length} rejected as non-PDP`);
-    }
-    console.log(`=================================\n`);
-
-    // Take top DISPLAY_COUNT (9)
-    const finalProducts = pdpPassed.slice(0, DISPLAY_COUNT);
-
-    // Step 7: Merge enriched data + pills into recommendations
     const recommendations = finalProducts.map((p, i) => ({
       name: p.title,
       price: p.price || 'Price unavailable',
-      description: p.description || '',
-      brand: p.brand || null,
-      rating: p.merchantRating || p.rating || null,
+      description: '',
+      brand: null,
+      rating: p.rating || null,
       tag: i === 0 ? 'TOP PICK' : 'GREAT FIND',
       ctaText: 'View Product',
       ctaColor: '#c8956c',
-      url: p.merchantUrl,
+      url: p.link,
       imageUrl: p.imageUrl,
-      imageUrls: p.imageUrls?.length > 1 ? p.imageUrls : [],
+      imageUrls: [],
       imageBg: '#252220',
-      matchedAttributes: pillLabels[p._originalIndex] || [],
-      merchantBadges: extractMerchantBadges(p.merchantExtensions),
+      matchedAttributes: [],
+      merchantBadges: extractMerchantBadges(p.extensions),
     }));
 
-    // Build meta from taste profile
     const curatedFor = tasteProfile.recipient?.name
       || tasteProfile.recipient?.relationship
       || 'her';
@@ -164,6 +132,89 @@ export async function POST(request) {
       summary: tasteProfile.summary
         || `Based on what you told us, we found ${recommendations.length} gifts she'll love.`,
     };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // ORIGINAL PIPELINE — uncomment to restore normal ScrapingDog flow
+    // ═══════════════════════════════════════════════════════════════════
+
+    // // Step 1: Use pre-built taste profile or generate one
+    // const tasteProfile = providedProfile
+    //   ? { ...providedProfile, clarification: undefined }
+    //   : await generateTasteProfile(description);
+    //
+    // // Step 2: Generate broad queries from taste profile
+    // const deepQueries = await generateDeepQueries(tasteProfile);
+    // console.log('\n========== DEEP RESEARCH QUERIES ==========');
+    // console.log(JSON.stringify(deepQueries, null, 2));
+    // console.log('============================================\n');
+    //
+    // // Step 3: Execute queries via ScrapingDog Shopping API (cached)
+    // const serperResults = await executeScrapingDogQueries(deepQueries);
+    //
+    // // Step 4: Deduplicate across queries
+    // const uniqueProducts = dedupeSerperResults(serperResults);
+    //
+    // // Step 5: Prune to top 16 (enrichment pool)
+    // const prunedProducts = pruneSerperResults(uniqueProducts, tasteProfile);
+    //
+    // // Step 6: Enrich products + generate pill labels in parallel
+    // const [enrichedProducts, pillLabels] = await Promise.all([
+    //   enrichProducts(prunedProducts),
+    //   generatePillLabels(prunedProducts, tasteProfile),
+    // ]);
+    //
+    // // Tag each enriched product with its original pruned index (for pill mapping)
+    // const enrichedWithIndex = enrichedProducts.map((p, i) => ({ ...p, _originalIndex: i }));
+    //
+    // // Step 6.5: PDP confidence scoring — reject non-product pages
+    // const pdpScored = enrichedWithIndex.map(p => ({
+    //   ...p,
+    //   _pdpScore: scorePDP({ url: p.merchantUrl, title: p.title, price: p.price, snippet: p.description }),
+    // }));
+    //
+    // const pdpRejected = pdpScored.filter(p => p._pdpScore <= -2);
+    // const pdpPassed = pdpScored.filter(p => p._pdpScore > -2);
+    //
+    // console.log(`\n========== PDP SCORING ==========`);
+    // for (const p of pdpScored) {
+    //   const status = p._pdpScore <= -2 ? 'REJECT' : p._pdpScore >= 3 ? 'ACCEPT' : 'PASS';
+    //   console.log(`  [${p._pdpScore >= 0 ? '+' : ''}${p._pdpScore}] ${status} — ${p.title} (${p.merchantUrl})`);
+    // }
+    // if (pdpRejected.length > 0) {
+    //   console.log(`  ${pdpRejected.length} rejected as non-PDP`);
+    // }
+    // console.log(`=================================\n`);
+    //
+    // // Take top DISPLAY_COUNT (9)
+    // const finalProducts = pdpPassed.slice(0, DISPLAY_COUNT);
+    //
+    // // Step 7: Merge enriched data + pills into recommendations
+    // const recommendations = finalProducts.map((p, i) => ({
+    //   name: p.title,
+    //   price: p.price || 'Price unavailable',
+    //   description: p.description || '',
+    //   brand: p.brand || null,
+    //   rating: p.merchantRating || p.rating || null,
+    //   tag: i === 0 ? 'TOP PICK' : 'GREAT FIND',
+    //   ctaText: 'View Product',
+    //   ctaColor: '#c8956c',
+    //   url: p.merchantUrl,
+    //   imageUrl: p.imageUrl,
+    //   imageUrls: p.imageUrls?.length > 1 ? p.imageUrls : [],
+    //   imageBg: '#252220',
+    //   matchedAttributes: pillLabels[p._originalIndex] || [],
+    //   merchantBadges: extractMerchantBadges(p.merchantExtensions),
+    // }));
+    //
+    // // Build meta from taste profile
+    // const curatedFor = tasteProfile.recipient?.name
+    //   || tasteProfile.recipient?.relationship
+    //   || 'her';
+    // const meta = {
+    //   curatedFor,
+    //   summary: tasteProfile.summary
+    //     || `Based on what you told us, we found ${recommendations.length} gifts she'll love.`,
+    // };
 
     return NextResponse.json({
       recommendations,
