@@ -108,7 +108,7 @@ async function executeOneQuery(rawQuery) {
     },
     body: JSON.stringify({
       q: rawQuery,
-      num: 10,
+      num: 40,
     }),
   });
 
