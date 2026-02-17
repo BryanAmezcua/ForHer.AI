@@ -1,4 +1,6 @@
 import openai, { MODEL } from './openai';
+import { stripMarkdownFences } from './strip-markdown';
+import { debugLog } from './debug';
 
 const PILL_PROMPT = `You are a gift recommendation assistant. Given a taste profile describing a gift recipient and a list of products selected for her, generate 1-2 short pill labels per product that explain WHY each product fits her specifically.
 
@@ -51,18 +53,17 @@ export async function generatePillLabels(products, tasteProfile) {
     });
 
     const content = response.choices[0].message.content.trim();
-    const cleaned = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-    const pills = JSON.parse(cleaned);
+    const pills = JSON.parse(stripMarkdownFences(content));
 
     // Validate shape: must be array of arrays
     if (!Array.isArray(pills)) return products.map(() => []);
 
-    console.log('\n========== PILL LABELS ==========');
+    debugLog('\n========== PILL LABELS ==========');
     products.forEach((p, i) => {
       const labels = (pills[i] || []).map(pill => `${pill.label} (${pill.category})`).join(', ');
-      console.log(`  ${p.title} → ${labels || '(none)'}`);
+      debugLog(`  ${p.title} → ${labels || '(none)'}`);
     });
-    console.log('=================================\n');
+    debugLog('=================================\n');
 
     // Ensure we have an array for each product, cap at 2 pills
     return products.map((_, i) => {

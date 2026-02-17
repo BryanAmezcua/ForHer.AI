@@ -1,4 +1,6 @@
-import { scorePDP } from './score-pdp';
+import { scorePDP, PDP_ACCEPT_THRESHOLD } from './score-pdp';
+import { parsePrice } from './parse-price';
+import { debugLog } from './debug';
 
 /**
  * Enriches pruned products via ScrapingDog Immersive Product API.
@@ -19,16 +21,16 @@ export async function enrichProducts(products) {
   }
 
   const found = enriched.filter(p => p.merchantUrl !== p.link).length;
-  console.log(`\n========== ENRICHMENT (ScrapingDog Immersive) ==========`);
-  console.log(`${enriched.length} products enriched (${found} merchant URLs found, ${enriched.length - found} fell back to Shopping link)`);
+  debugLog(`\n========== ENRICHMENT (ScrapingDog Immersive) ==========`);
+  debugLog(`${enriched.length} products enriched (${found} merchant URLs found, ${enriched.length - found} fell back to Shopping link)`);
   for (const p of enriched) {
     const tag = p.merchantUrl !== p.link ? '' : ' [Shopping fallback]';
-    console.log(`  - ${p.title}`);
-    console.log(`    Store: ${p.merchantName || '(none)'}${tag}`);
-    console.log(`    URL: ${p.merchantUrl}`);
-    console.log(`    Desc: ${p.description ? p.description.substring(0, 100) + '...' : '(none)'}`);
+    debugLog(`  - ${p.title}`);
+    debugLog(`    Store: ${p.merchantName || '(none)'}${tag}`);
+    debugLog(`    URL: ${p.merchantUrl}`);
+    debugLog(`    Desc: ${p.description ? p.description.substring(0, 100) + '...' : '(none)'}`);
   }
-  console.log(`========================================================\n`);
+  debugLog(`========================================================\n`);
 
   return enriched;
 }
@@ -59,7 +61,7 @@ function selectBestStore(stores) {
     // +2 if PDP score on store.link >= 3 (known retailer domain)
     if (store.link) {
       const pdp = scorePDP({ url: store.link, title: store.title || '' });
-      if (pdp >= 3) score += 2;
+      if (pdp >= PDP_ACCEPT_THRESHOLD) score += 2;
     }
 
     // +1 if store has ratings
@@ -75,7 +77,7 @@ function selectBestStore(stores) {
     if (exts.some(e => e.includes('free returns'))) score += 0.5;
 
     // Parse total_price for tiebreak (lower is better)
-    const totalPrice = parsePriceString(store.total_price || store.price);
+    const totalPrice = parsePrice(store.total_price || store.price);
 
     return { store, score, totalPrice };
   });
@@ -93,25 +95,25 @@ function selectBestStore(stores) {
   return scored[0].store;
 }
 
-function parsePriceString(priceStr) {
-  if (!priceStr) return null;
-  const match = priceStr.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
-  return match ? parseFloat(match[1]) : null;
+// Build a fallback enrichment result, with optional partial data from the API
+function buildFallback(product, partialData = {}) {
+  return {
+    ...product,
+    merchantUrl: product.link,
+    merchantName: null,
+    description: null,
+    brand: null,
+    imageUrls: [],
+    merchantRating: null,
+    merchantReviews: null,
+    merchantExtensions: [],
+    ...partialData,
+  };
 }
 
 async function enrichOne(product) {
   if (!product.immersiveUrl) {
-    return {
-      ...product,
-      merchantUrl: product.link,
-      merchantName: null,
-      description: null,
-      brand: null,
-      imageUrls: [],
-      merchantRating: null,
-      merchantReviews: null,
-      merchantExtensions: [],
-    };
+    return buildFallback(product);
   }
 
   try {
@@ -119,13 +121,11 @@ async function enrichOne(product) {
 
     if (!response.ok) {
       console.error(`Immersive Product failed for "${product.title}": ${response.status}`);
-      return fallback(product);
+      return buildFallback(product);
     }
 
     const data = await response.json();
-
     const bestStore = selectBestStore(data.stores);
-
     const imageUrls = data.thumbnails || [];
 
     if (bestStore) {
@@ -143,35 +143,15 @@ async function enrichOne(product) {
       };
     }
 
-    // No viable store — fall back but still grab description/brand if available
-    return {
-      ...product,
-      merchantUrl: product.link,
-      merchantName: null,
+    // No viable store — fall back but still grab description/brand/images if available
+    return buildFallback(product, {
       description: data.about_the_product?.description || null,
       imageUrl: imageUrls[0] || product.imageUrl,
       imageUrls,
       brand: data.brand || null,
-      merchantRating: null,
-      merchantReviews: null,
-      merchantExtensions: [],
-    };
+    });
   } catch (err) {
     console.error(`Enrichment failed for "${product.title}": ${err.message}`);
-    return fallback(product);
+    return buildFallback(product);
   }
-}
-
-function fallback(product) {
-  return {
-    ...product,
-    merchantUrl: product.link,
-    merchantName: null,
-    description: null,
-    brand: null,
-    imageUrls: [],
-    merchantRating: null,
-    merchantReviews: null,
-    merchantExtensions: [],
-  };
 }

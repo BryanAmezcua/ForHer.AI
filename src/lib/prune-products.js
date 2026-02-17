@@ -1,3 +1,6 @@
+import { parsePrice } from './parse-price';
+import { debugLog } from './debug';
+
 const ENRICH_POOL_SIZE = 16; // Pre-enrichment pool — over-fetch to allow PDP filtering
 export const DISPLAY_COUNT = 9; // Final display count after PDP scoring
 const MIN_PRICE = 5; // Items under $5 are probably not real gifts
@@ -17,13 +20,6 @@ const STOPWORDS = new Set([
   'she', 'her', 'he', 'his', 'they', 'them', 'we', 'us', 'my', 'our',
   'set', 'new', 'all', 'get', 'got', 'can', 'one', 'two', 'also',
 ]);
-
-// ── Parse price string to number ──
-function parsePrice(priceStr) {
-  if (!priceStr) return null;
-  const match = priceStr.replace(/,/g, '').match(/(\d+(?:\.\d+)?)/);
-  return match ? parseFloat(match[1]) : null;
-}
 
 // ── Normalize text for token matching ──
 function tokenize(text) {
@@ -99,16 +95,16 @@ function budgetFitScore(priceValue, budget) {
 }
 
 /**
- * Scores and prunes deduplicated Serper shopping results.
+ * Scores and prunes deduplicated shopping results.
  * Drops items without images and gift sets/bundles, scores remainder on
  * budget fit, cluster size, interest relevance, data completeness, and price sanity.
- * Returns the top 14 (enrichment pool — PDP scoring trims to 9 downstream).
+ * Returns the top 16 (enrichment pool — PDP scoring trims to 9 downstream).
  *
  * @param {Array} products - Deduplicated shopping items (with clusterSize attached)
  * @param {Object} tasteProfile - The user's taste profile
- * @returns {Array} Top 14 pruned products (enrichment pool)
+ * @returns {Array} Top 16 pruned products (enrichment pool)
  */
-export function pruneSerperResults(products, tasteProfile) {
+export function pruneProducts(products, tasteProfile) {
   const { budget, interests, interestAliases } = tasteProfile;
 
   // Hard filter: drop items with no image
@@ -171,18 +167,18 @@ export function pruneSerperResults(products, tasteProfile) {
   scored.sort((a, b) => b.total - a.total);
   const pruned = scored.slice(0, ENRICH_POOL_SIZE);
 
-  console.log(`\n========== SERPER PRUNE ==========`);
-  console.log(`${products.length} products → ${withImages.length} with images → ${noGiftSets.length} after gift-set filter → top ${pruned.length} kept (pool for enrichment)`);
+  debugLog(`\n========== PRODUCT PRUNE ==========`);
+  debugLog(`${products.length} products → ${withImages.length} with images → ${noGiftSets.length} after gift-set filter → top ${pruned.length} kept (pool for enrichment)`);
   if (droppedNoImage > 0) {
-    console.log(`  (${droppedNoImage} dropped for missing image)`);
+    debugLog(`  (${droppedNoImage} dropped for missing image)`);
   }
   if (droppedGiftSets > 0) {
-    console.log(`  (${droppedGiftSets} dropped for gift set/bundle title)`);
+    debugLog(`  (${droppedGiftSets} dropped for gift set/bundle title)`);
   }
   for (const { product, total, budgetFit, confidence, interestScore, reviewScore } of pruned) {
-    console.log(`  [${total.toFixed(2)}] ${product.title} | ${product.price} (budget:${budgetFit.toFixed(1)} conf:${confidence.toFixed(1)} interest:${interestScore.toFixed(1)} reviews:${reviewScore.toFixed(1)})`);
+    debugLog(`  [${total.toFixed(2)}] ${product.title} | ${product.price} (budget:${budgetFit.toFixed(1)} conf:${confidence.toFixed(1)} interest:${interestScore.toFixed(1)} reviews:${reviewScore.toFixed(1)})`);
   }
-  console.log(`==================================\n`);
+  debugLog(`====================================\n`);
 
   return pruned.map(({ product }) => product);
 }

@@ -1,4 +1,5 @@
 import openai, { MODEL } from './openai';
+import { stripMarkdownFences } from './strip-markdown';
 
 const TASTE_PROFILE_PROMPT = `You are a gift-finding assistant. Given a free-text description of a woman written by someone shopping for her, extract a structured taste profile.
 
@@ -82,8 +83,5 @@ export async function generateTasteProfile(description) {
 
   const content = response.choices[0].message.content.trim();
 
-  // Strip markdown fencing if the model adds it anyway
-  const cleaned = content.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
-
-  return JSON.parse(cleaned);
+  return JSON.parse(stripMarkdownFences(content));
 }
