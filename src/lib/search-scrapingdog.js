@@ -2,8 +2,8 @@ import { createHash } from 'crypto';
 import { connectDB } from './mongoose';
 import { ShoppingCache } from './models/shopping-cache';
 
-const SERPER_API_KEY = process.env.Serper_API_KEY;
-const SERPER_ENDPOINT = 'https://google.serper.dev/shopping';
+const API_KEY = process.env.SCRAPINGDOG_API_KEY;
+const SCRAPINGDOG_ENDPOINT = 'https://api.scrapingdog.com/google_shopping';
 
 const TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
 
@@ -55,12 +55,29 @@ function normalizeQuery(raw) {
 
 // ── Compute deterministic cache key ──
 function computeCacheKey(normalizedQuery) {
-  const input = `serper|US|${normalizedQuery}`;
+  const input = `scrapingdog|US|${normalizedQuery}`;
   return createHash('sha256').update(input).digest('hex');
 }
 
+// ── Normalize a ScrapingDog shopping item to canonical shape ──
+function normalizeItem(item) {
+  return {
+    title:          item.title,
+    link:           item.product_link || item.product_url,
+    price:          item.price,
+    extractedPrice: item.extracted_price ?? null,
+    source:         item.source,
+    imageUrl:       item.thumbnail,
+    rating:         item.rating || null,
+    reviews:        item.reviews || null,
+    extensions:     item.extensions || [],
+    productId:      item.product_id,
+    immersiveUrl:   item.scrapingdog_immersive_product_link,
+  };
+}
+
 // ── Save results to MongoDB ──
-async function createMongoDocument(rawQuery, normalizedQuery, cacheKey, shoppingResults) {
+async function createMongoDocument(rawQuery, normalizedQuery, cacheKey, normalizedResults) {
   const now = new Date();
 
   const doc = {
@@ -70,20 +87,26 @@ async function createMongoDocument(rawQuery, normalizedQuery, cacheKey, shopping
       normalized: normalizedQuery,
       locale: { country: 'US', currency: 'USD', lang: 'en' },
     },
-    provider: 'serper',
+    provider: 'scrapingdog',
     fetchedAt: now,
     expiresAt: new Date(now.getTime() + TTL_MS),
-    results: shoppingResults.map(item => ({
+    results: normalizedResults.map(item => ({
       title: item.title,
       link: item.link,
       price: item.price,
+      extractedPrice: item.extractedPrice,
       source: item.source,
       imageUrl: item.imageUrl,
+      rating: item.rating,
+      reviews: item.reviews,
+      extensions: item.extensions,
+      productId: item.productId,
+      immersiveUrl: item.immersiveUrl,
     })),
   };
 
   await ShoppingCache.findByIdAndUpdate(cacheKey, doc, { upsert: true });
-  console.log(`  [CACHE] Saved ${shoppingResults.length} results for "${rawQuery}"`);
+  console.log(`  [CACHE] Saved ${normalizedResults.length} results for "${rawQuery}"`);
 }
 
 // ── Execute a single query with cache check ──
@@ -98,27 +121,27 @@ async function executeOneQuery(rawQuery) {
     return { query: rawQuery, shopping: cached.results, fromCache: true };
   }
 
-  // Cache miss — call Serper
-  console.log(`  [CACHE MISS] "${rawQuery}" → calling Serper API`);
-  const response = await fetch(SERPER_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'X-API-KEY': SERPER_API_KEY,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      q: rawQuery,
-      num: 40,
-    }),
+  // Cache miss — call ScrapingDog
+  console.log(`  [CACHE MISS] "${rawQuery}" → calling ScrapingDog API`);
+
+  const params = new URLSearchParams({
+    api_key: API_KEY,
+    query: rawQuery,
+    country: 'us',
+    language: 'en',
   });
 
+  const response = await fetch(`${SCRAPINGDOG_ENDPOINT}?${params}`);
+
   if (!response.ok) {
-    console.error(`Serper query failed for "${rawQuery}": ${response.status} ${response.statusText}`);
+    console.error(`ScrapingDog query failed for "${rawQuery}": ${response.status} ${response.statusText}`);
     return { query: rawQuery, shopping: [], error: response.statusText };
   }
 
   const data = await response.json();
-  const shoppingResults = data.shopping || [];
+  const shoppingResults = (data.shopping_results || []).map(normalizeItem);
+
+  console.log(`  [API] "${rawQuery}" → ${shoppingResults.length} results`);
 
   // Save to MongoDB
   await createMongoDocument(rawQuery, normalized, cacheKey, shoppingResults);
@@ -127,37 +150,18 @@ async function executeOneQuery(rawQuery) {
 }
 
 // ── Public: execute all deep queries ──
-export async function executeSerperQueries(deepQueries) {
+export async function executeScrapingDogQueries(deepQueries) {
   const { queries } = deepQueries;
 
-  console.log('\n========== SERPER QUERIES ==========');
+  console.log('\n========== SCRAPINGDOG QUERIES ==========');
   console.log(queries.map(q => q.q));
-  console.log('====================================\n');
+  console.log('==========================================\n');
 
   await connectDB();
 
   const results = await Promise.all(
     queries.map(query => executeOneQuery(query.q))
   );
-
-  /* console.log('\n========== SERPER RESULTS ==========');
-  for (const result of results) {
-    const tag = result.fromCache ? ' (from cache)' : '';
-    console.log(`\n--- Query: "${result.query}"${tag} ---`);
-    if (result.error) {
-      console.log(`  ERROR: ${result.error}`);
-      continue;
-    }
-    const shopping = result.shopping || [];
-    console.log(`  ${shopping.length} shopping results:`);
-    for (const item of shopping) {
-      console.log(`Title: ${item.title}`);
-      console.log(`Link: ${item.link}`);
-      console.log(`Price: ${item.price}`);
-      console.log(`Image: ${item.imageUrl}`);
-    }
-  }
-  console.log('\n====================================\n'); */
 
   return results;
 }

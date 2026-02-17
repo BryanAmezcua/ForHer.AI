@@ -32,20 +32,19 @@ ForHer.AI/
 │       ├── utils.js            # cn() utility (clsx + tailwind-merge)
 │       ├── openai.js           # OpenAI client singleton + MODEL constant
 │       ├── mongoose.js         # MongoDB connection singleton (cached, targets serper-queries DB)
-│       ├── tavily.js           # Tavily client singleton (retained for future enrichment)
-│       ├── search-tavily.js    # executeQueries() — Tavily search executor (retained for future enrichment)
 │       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
 │       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries
-│       ├── search-serper.js    # executeSerperQueries() — Serper Shopping API + MongoDB cache
+│       ├── search-scrapingdog.js  # executeScrapingDogQueries() — ScrapingDog Shopping API + MongoDB cache
 │       ├── dedupe-serper.js    # dedupeSerperResults() — Jaccard + price clustering for shopping results
-│       ├── prune-serper.js     # pruneSerperResults() — Score + cut to top 5 products
+│       ├── score-pdp.js        # scorePDP() — PDP confidence scoring (URL/title/snippet signals)
+│       ├── prune-serper.js     # pruneSerperResults() — Gift-set filter + score + cut to top 16 (enrichment pool)
 │       ├── generate-pills.js  # generatePillLabels() — LLM-generated "why this fits" pills (1-2 per product)
-│       ├── enrich-serper.js   # enrichProducts() — Tavily search to resolve merchant URLs + descriptions
+│       ├── enrich-scrapingdog.js # enrichProducts() — ScrapingDog Immersive Product API for merchant URLs + descriptions + store selection
 │       └── models/
 │           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
 ├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
-├── .env.local                  # API keys (OPENAI_API_KEY, etc.)
+├── .env.local                  # API keys (OPENAI_API_KEY, SCRAPINGDOG_API_KEY, etc.)
 ├── CLAUDE.md                   # Project specs and instructions
 ├── package.json
 ├── next.config.mjs
@@ -72,39 +71,60 @@ The main page uses a `phase` state to switch between five views:
    - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
 - Taste profile is generated via OpenAI from the free-text description (model set in `src/lib/openai.js`)
 
-**Product Discovery Pipeline (Serper Shopping):**
-- Single pipeline, no toggle — Serper Shopping is the only data fetching strategy
-- Flow: taste profile → `generateDeepQueries()` → `executeSerperQueries()` → `dedupeSerperResults()` → `pruneSerperResults()` → `enrichProducts()` → recommendations
+**Product Discovery Pipeline (ScrapingDog Shopping):**
+- Single pipeline, no toggle — ScrapingDog Shopping is the only data fetching strategy
+- Flow: taste profile → `generateDeepQueries()` → `executeScrapingDogQueries()` → `dedupeSerperResults()` → `pruneSerperResults()` (gift-set filter + top 16) → `enrichProducts()` + `generatePillLabels()` (parallel) → `scorePDP()` filter → top 9 display
 - Generates 3 broad, natural Google-style queries via OpenAI
-- Executes queries against Serper.dev Shopping API (10 results per query)
+- Executes queries against ScrapingDog Google Shopping API (~40+ results per query)
 - Results cached in MongoDB with 48-hour TTL
-- Cache key: `sha256("serper|US|" + normalizedQuery)` — queries normalized (stopword removal + basic stemming + sorted)
-- Pipeline now returns real product data (no more mock recommendations)
+- Cache key: `sha256("scrapingdog|US|" + normalizedQuery)` — queries normalized (stopword removal + basic stemming + sorted)
+- ScrapingDog returns richer data than Serper: ratings, reviews, extensions, extracted_price, product IDs, immersive product links
 
-**Serper Shopping Deduplication:**
+**Shopping Deduplication:**
 - `src/lib/dedupe-serper.js` — `dedupeSerperResults(serperResults)` collapses duplicate products across all queries
 - Title normalization: lowercase, strip `®™©`, remove trailing store-name suffixes, drop junk words (retailer names, "free shipping", "sale", etc.), standardize synonyms (`qt`→`quart`, `oz`→`ounce`, etc.)
 - Clustering: Jaccard similarity (>= 0.55) on normalized word tokens + price proximity (within 30%)
 - Winner selection: prefer listings with image, then lowest price
 - Attaches `clusterSize` to each winner for downstream scoring
-- Runs after `executeSerperQueries()`, before pruning
+- Runs after `executeScrapingDogQueries()`, before pruning
 
-**Serper Shopping Pruning:**
-- `src/lib/prune-serper.js` — `pruneSerperResults(products, tasteProfile)` scores and cuts to top 5
-- Hard filter: drop items with no image
-- Weighted scoring: interest relevance (35%), budget fit (25%), cluster size (20%), price sanity (10%), data completeness (10%)
+**Shopping Pruning:**
+- `src/lib/prune-serper.js` — `pruneSerperResults(products, tasteProfile)` scores and cuts to top 16 (enrichment pool)
+- Hard filters: drop items with no image, drop gift sets/bundles (title regex patterns)
+- Weighted scoring: interest relevance (30%), budget fit (25%), confidence (20%), price sanity (10%), data completeness (10%), review volume (5%)
 - Budget fit: 1.0 if within range, 0.5 if within 20% grace zone, 0 if way outside
-- Cluster size: 3+ = 1.0, 2 = 0.5, 1 = 0.2
+- Confidence: combines cluster size (3+ = 1.0, 2 = 0.5, 1 = 0.2) + rating boost (+0.3 for 4.0+, +0.1 for 3.0+)
+- Review volume: reviewCount >= 100 → 1.0, >= 10 → 0.5, else 0.1
+- Data completeness: price (+0.5), rating (+0.25), reviews (+0.25)
 - Interest relevance: token overlap between product title and taste profile interests array (with alias fallback from interestAliases)
-- Pill labels generated by a separate LLM call, run in parallel with Tavily enrichment
-- Sorts descending, returns top 10
+- Pill labels generated by a separate LLM call, run in parallel with ScrapingDog enrichment
+- Sorts descending, returns top 16 (ENRICH_POOL_SIZE); exports DISPLAY_COUNT = 9
 - Runs after `dedupeSerperResults()`, before enrichment
 
-**Serper Shopping Cache (MongoDB):**
+**PDP Confidence Scoring:**
+- `src/lib/score-pdp.js` — `scorePDP({ url, title, price, snippet })` returns numeric confidence score
+- URL path signals: +1 product paths, -1 search/browse paths, -1 search query params
+- Shopify: +2 /products/, +1 /collections/.../products/, -2 /collections/ without /products/
+- Domain rules (+3): Amazon /dp/, Walmart /ip/, Target /p/, BestBuy /site/, Etsy /listing/
+- Title/snippet: +1 price symbol, +1 size/model indicators, -1 editorial terms
+- Editorial paths: -2 for /gift-guide/, /best-sellers/, /top-10/, /ideas/, /edit/
+- Thresholds: >= +3 accept, <= -2 reject, -1 to +2 pass as-is
+- Runs after ScrapingDog enrichment, before final assembly; trims to DISPLAY_COUNT (9)
+
+**Product Enrichment (ScrapingDog Immersive Product):**
+- `src/lib/enrich-scrapingdog.js` — `enrichProducts(products)` resolves merchant URLs and descriptions via ScrapingDog Immersive Product API
+- Each product has an `immersiveUrl` (pre-built API URL with api_key and page_token from Shopping response)
+- Response includes `stores[]` array with real merchant URLs, ratings, reviews, extensions, prices
+- Store selection algorithm picks best store: reject out-of-stock, score on PDP signals (+2), ratings (+1), in-stock (+1), free shipping (+0.5), free returns (+0.5), tiebreak by lowest total_price
+- Also extracts: product description, brand, thumbnail URLs
+- Fallback: if no stores survive or API fails, keeps Google Shopping link + null description
+- Cost: ~5 credits per Immersive Product call (16 calls = 80 credits per request)
+
+**Shopping Cache (MongoDB):**
 - Connection: `src/lib/mongoose.js` — cached singleton, database `serper-queries`
 - Model: `src/lib/models/shopping-cache.js` — collection `shopping-cache`
 - Document schema: `{ _id (cacheKey), query: { raw, normalized, locale }, provider, fetchedAt, expiresAt (TTL), results[] }`
-- Results stored as strings (price kept as `"$29.99"` to avoid type conversions)
+- Results include: title, link, price, extractedPrice, source, imageUrl, rating, reviews, extensions, productId, immersiveUrl
 - TTL index on `expiresAt` — MongoDB auto-deletes expired documents
 
 **Taste Profile Pipeline:**
@@ -112,15 +132,6 @@ The main page uses a `phase` state to switch between five views:
 - `src/lib/taste-profile.js` — `generateTasteProfile(description)` sends user input to LLM, returns structured JSON
 - LLM extracts: recipient info, occasion, budget, interests, interestAliases (~10 shopping tokens per interest), aesthetic, personality, constraints, gifting context
 - Uses low temperature (0.3) for consistent structured output
-
-**Product Enrichment (Tavily):**
-- `src/lib/enrich-serper.js` — `enrichProducts(products)` resolves merchant URLs and descriptions for pruned products
-- Uses `src/lib/tavily.js` (SDK singleton) to run 1 Tavily search per product in parallel
-- Search query: `"[product title] [source/retailer]"` with `maxResults: 1`
-- From top result: extracts merchant URL (from `result.url`) and description (from `result.content`)
-- Fallback: if Tavily returns no result or errors, keeps the Google Shopping link and sets description to null
-- Cost: 5 Tavily API calls per user request (1 per pruned product)
-- `src/lib/search-tavily.js` — generic Tavily query executor, retained but not directly used in current pipeline
 
 **Component Strategy:**
 - shadcn/ui components for base primitives (Button, Textarea)
@@ -133,13 +144,15 @@ Each recommendation object contains:
 {
   name: string,       // Product name
   price: string,      // Display price
-  why: string,        // Personalized reasoning
-  tag: string,        // Category label (e.g., "TOP MATCH", "GREAT FIND")
-  matchScore: number, // 0–100, derived from relevanceScore
-  matchedAttributes: [{ label: string, category: string }], // Up to 3 taste profile pills
-  ctaText: string,    // Button text (e.g., "Explore Details")
+  description: string,// Product description from Immersive Product
+  brand: string|null, // Brand name (NEW)
+  rating: string|null,// e.g. "4.7/5" (NEW — prefers merchant-level, falls back to product-level)
+  reviews: string|null,// e.g. "237" (NEW)
+  tag: string,        // Category label (e.g., "TOP PICK", "GREAT FIND")
+  matchedAttributes: [{ label: string, category: string }], // Up to 2 taste profile pills
+  ctaText: string,    // Button text (e.g., "View Product")
   ctaColor: string,   // Hex color for CTA button
-  url: string,        // Purchase link
+  url: string,        // Purchase link (real merchant URL from store selection)
   imageUrl: string,   // Product image URL
   imageBg: string,    // Fallback background color
 }

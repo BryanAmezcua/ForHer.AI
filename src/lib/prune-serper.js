@@ -1,6 +1,14 @@
-const MAX_RESULTS = 9;
+const ENRICH_POOL_SIZE = 16; // Pre-enrichment pool — over-fetch to allow PDP filtering
+export const DISPLAY_COUNT = 9; // Final display count after PDP scoring
 const MIN_PRICE = 5; // Items under $5 are probably not real gifts
 const MIN_TOKEN_LENGTH = 3;
+
+const GIFT_SET_PATTERNS = [
+  /gift\s*set/i, /gift\s*box/i, /gift\s*basket/i, /gift\s*kit/i,
+  /care\s*package/i, /variety\s*pack/i, /sampler\s*set/i,
+  /assortment/i, /bundle\s*set/i, /spa\s*set/i,
+  /gift\s*collection/i, /gift\s*pack/i,
+];
 
 const STOPWORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
@@ -92,13 +100,13 @@ function budgetFitScore(priceValue, budget) {
 
 /**
  * Scores and prunes deduplicated Serper shopping results.
- * Drops items without images, scores remainder on budget fit,
- * cluster size, interest relevance, data completeness, and price sanity.
- * Returns the top 10.
+ * Drops items without images and gift sets/bundles, scores remainder on
+ * budget fit, cluster size, interest relevance, data completeness, and price sanity.
+ * Returns the top 14 (enrichment pool — PDP scoring trims to 9 downstream).
  *
  * @param {Array} products - Deduplicated shopping items (with clusterSize attached)
  * @param {Object} tasteProfile - The user's taste profile
- * @returns {Array} Top 10 pruned products
+ * @returns {Array} Top 14 pruned products (enrichment pool)
  */
 export function pruneSerperResults(products, tasteProfile) {
   const { budget, interests, interestAliases } = tasteProfile;
@@ -107,24 +115,29 @@ export function pruneSerperResults(products, tasteProfile) {
   const withImages = products.filter(p => !!p.imageUrl);
   const droppedNoImage = products.length - withImages.length;
 
+  // Hard filter: drop gift sets / bundles
+  const noGiftSets = withImages.filter(p => !GIFT_SET_PATTERNS.some(rx => rx.test(p.title)));
+  const droppedGiftSets = withImages.length - noGiftSets.length;
+
   // Score each product
-  const scored = withImages.map(product => {
+  const scored = noGiftSets.map(product => {
     const priceValue = parsePrice(product.price);
     const titleTokens = tokenize(product.title);
 
-    // 1. Budget fit (0–1, weight 25%)
-    const budgetFit = budgetFitScore(priceValue, budget);
-
-    // 2. Cluster size — more retailers = more confidence (weight 20%)
-    // Normalize: 1 listing = 0.2, 2 = 0.5, 3+ = 1.0
-    const clusterSize = product.clusterSize || 1;
-    const clusterScore = clusterSize >= 3 ? 1.0 : clusterSize === 2 ? 0.5 : 0.2;
-
-    // 3. Interest relevance — token overlap with interests (weight 35%)
+    // 1. Interest relevance (weight 30%)
     const interestHits = interestOverlap(titleTokens, interests, interestAliases);
     const interestScore = interests && interests.length > 0
       ? Math.min(interestHits / Math.min(interests.length, 3), 1.0)
-      : 0.5; // no interests provided = neutral
+      : 0.5;
+
+    // 2. Budget fit (weight 25%)
+    const budgetFit = budgetFitScore(priceValue, budget);
+
+    // 3. Confidence — cluster size + rating boost (weight 20%)
+    const clusterSize = product.clusterSize || 1;
+    let confidence = clusterSize >= 3 ? 1.0 : clusterSize === 2 ? 0.5 : 0.2;
+    if (product.rating && product.rating >= 4.0) confidence = Math.min(confidence + 0.3, 1.0);
+    else if (product.rating && product.rating >= 3.0) confidence = Math.min(confidence + 0.1, 1.0);
 
     // 4. Price sanity (weight 10%)
     let priceScore = 0.5;
@@ -132,31 +145,42 @@ export function pruneSerperResults(products, tasteProfile) {
       priceScore = priceValue >= MIN_PRICE ? 1.0 : 0;
     }
 
-    // 5. Data completeness — has price (weight 10%)
-    const completenessScore = priceValue !== null ? 1.0 : 0.2;
+    // 5. Data completeness — price + rating + reviews (weight 10%)
+    let completenessScore = 0;
+    if (priceValue !== null) completenessScore += 0.5;
+    if (product.rating) completenessScore += 0.25;
+    if (product.reviews) completenessScore += 0.25;
+
+    // 6. Review volume (weight 5%)
+    const reviewCount = parseInt((product.reviews || '0').replace(/,/g, ''), 10);
+    const reviewScore = reviewCount >= 100 ? 1.0 : reviewCount >= 10 ? 0.5 : 0.1;
 
     // Weighted total
     const total =
+      interestScore * 0.30 +
       budgetFit * 0.25 +
-      clusterScore * 0.20 +
-      interestScore * 0.35 +
+      confidence * 0.20 +
       priceScore * 0.10 +
-      completenessScore * 0.10;
+      completenessScore * 0.10 +
+      reviewScore * 0.05;
 
-    return { product, total, budgetFit, clusterScore, interestScore, priceScore, completenessScore };
+    return { product, total, budgetFit, confidence, interestScore, priceScore, completenessScore, reviewScore };
   });
 
-  // Sort descending by score, take top N
+  // Sort descending by score, take top N (enrichment pool)
   scored.sort((a, b) => b.total - a.total);
-  const pruned = scored.slice(0, MAX_RESULTS);
+  const pruned = scored.slice(0, ENRICH_POOL_SIZE);
 
   console.log(`\n========== SERPER PRUNE ==========`);
-  console.log(`${products.length} products → ${withImages.length} with images → top ${pruned.length} kept`);
+  console.log(`${products.length} products → ${withImages.length} with images → ${noGiftSets.length} after gift-set filter → top ${pruned.length} kept (pool for enrichment)`);
   if (droppedNoImage > 0) {
     console.log(`  (${droppedNoImage} dropped for missing image)`);
   }
-  for (const { product, total, budgetFit, clusterScore, interestScore } of pruned) {
-    console.log(`  [${total.toFixed(2)}] ${product.title} | ${product.price} (budget:${budgetFit.toFixed(1)} cluster:${clusterScore.toFixed(1)} interest:${interestScore.toFixed(1)})`);
+  if (droppedGiftSets > 0) {
+    console.log(`  (${droppedGiftSets} dropped for gift set/bundle title)`);
+  }
+  for (const { product, total, budgetFit, confidence, interestScore, reviewScore } of pruned) {
+    console.log(`  [${total.toFixed(2)}] ${product.title} | ${product.price} (budget:${budgetFit.toFixed(1)} conf:${confidence.toFixed(1)} interest:${interestScore.toFixed(1)} reviews:${reviewScore.toFixed(1)})`);
   }
   console.log(`==================================\n`);
 

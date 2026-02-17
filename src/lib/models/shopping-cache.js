@@ -11,15 +11,21 @@ const shoppingCacheSchema = new mongoose.Schema({
       lang: { type: String, default: 'en' },
     },
   },
-  provider: { type: String, default: 'serper' },
+  provider: { type: String, default: 'scrapingdog' },
   fetchedAt: { type: Date, required: true },
   expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
   results: [{
     title: String,
     link: String,
     price: String,
+    extractedPrice: Number,
     source: String,
     imageUrl: String,
+    rating: Number,
+    reviews: String,
+    extensions: [String],
+    productId: String,
+    immersiveUrl: String,
   }],
 });
 

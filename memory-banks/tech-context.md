@@ -42,7 +42,8 @@ npm run start  # Start production server
 - **App Router:** Using Next.js App Router (not Pages Router)
 - **Client-side main page:** `page.js` uses `'use client'` for interactive state management
 - **Remote images allowed:** `next.config.mjs` allows images from any HTTPS hostname
-- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`, targeting `serper-queries` database. Used for Serper shopping result caching. Connection string in `MONGODB_URI` env var.
+- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`, targeting `serper-queries` database. Used for ScrapingDog shopping result caching. Connection string in `MONGODB_URI` env var.
+- **ScrapingDog:** Google Shopping API + Immersive Product API for product search and enrichment. API key in `SCRAPINGDOG_API_KEY` env var. ~110 credits per request (~2,000 requests/month on LITE plan $40/mo).
 
 ### File Conventions
 - Components: `src/components/ui/*.jsx` (shadcn primitives)

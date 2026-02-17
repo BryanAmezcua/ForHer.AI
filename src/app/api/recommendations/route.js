@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { generateTasteProfile } from '@/lib/taste-profile';
 import { generateDeepQueries } from '@/lib/search-queries-deep';
-import { executeSerperQueries } from '@/lib/search-serper';
+import { executeScrapingDogQueries } from '@/lib/search-scrapingdog';
 import { dedupeSerperResults } from '@/lib/dedupe-serper';
-import { pruneSerperResults } from '@/lib/prune-serper';
-import { enrichProducts } from '@/lib/enrich-serper';
+import { pruneSerperResults, DISPLAY_COUNT } from '@/lib/prune-serper';
+import { enrichProducts } from '@/lib/enrich-scrapingdog';
 import { generatePillLabels } from '@/lib/generate-pills';
+import { scorePDP } from '@/lib/score-pdp';
 
 const MOCK_RECOMMENDATIONS = [
   {
@@ -68,13 +69,13 @@ export async function POST(request) {
     console.log(JSON.stringify(deepQueries, null, 2));
     console.log('============================================\n');
 
-    // Step 3: Execute queries via Serper Shopping API (cached)
-    const serperResults = await executeSerperQueries(deepQueries);
+    // Step 3: Execute queries via ScrapingDog Shopping API (cached)
+    const serperResults = await executeScrapingDogQueries(deepQueries);
 
     // Step 4: Deduplicate across queries
     const uniqueProducts = dedupeSerperResults(serperResults);
 
-    // Step 5: Prune to top 10 by relevance scoring
+    // Step 5: Prune to top 16 (enrichment pool)
     const prunedProducts = pruneSerperResults(uniqueProducts, tasteProfile);
 
     // Step 6: Enrich products + generate pill labels in parallel
@@ -83,18 +84,46 @@ export async function POST(request) {
       generatePillLabels(prunedProducts, tasteProfile),
     ]);
 
+    // Tag each enriched product with its original pruned index (for pill mapping)
+    const enrichedWithIndex = enrichedProducts.map((p, i) => ({ ...p, _originalIndex: i }));
+
+    // Step 6.5: PDP confidence scoring — reject non-product pages
+    const pdpScored = enrichedWithIndex.map(p => ({
+      ...p,
+      _pdpScore: scorePDP({ url: p.merchantUrl, title: p.title, price: p.price, snippet: p.description }),
+    }));
+
+    const pdpRejected = pdpScored.filter(p => p._pdpScore <= -2);
+    const pdpPassed = pdpScored.filter(p => p._pdpScore > -2);
+
+    console.log(`\n========== PDP SCORING ==========`);
+    for (const p of pdpScored) {
+      const status = p._pdpScore <= -2 ? 'REJECT' : p._pdpScore >= 3 ? 'ACCEPT' : 'PASS';
+      console.log(`  [${p._pdpScore >= 0 ? '+' : ''}${p._pdpScore}] ${status} — ${p.title} (${p.merchantUrl})`);
+    }
+    if (pdpRejected.length > 0) {
+      console.log(`  ${pdpRejected.length} rejected as non-PDP`);
+    }
+    console.log(`=================================\n`);
+
+    // Take top DISPLAY_COUNT (9)
+    const finalProducts = pdpPassed.slice(0, DISPLAY_COUNT);
+
     // Step 7: Merge enriched data + pills into recommendations
-    const recommendations = enrichedProducts.map((p, i) => ({
+    const recommendations = finalProducts.map((p, i) => ({
       name: p.title,
       price: p.price || 'Price unavailable',
       description: p.description || '',
+      brand: p.brand || null,
+      rating: p.merchantRating || p.rating || null,
+      reviews: p.merchantReviews || p.reviews || null,
       tag: i === 0 ? 'TOP PICK' : 'GREAT FIND',
       ctaText: 'View Product',
       ctaColor: '#c8956c',
       url: p.merchantUrl,
       imageUrl: p.imageUrl,
       imageBg: '#252220',
-      matchedAttributes: pillLabels[i] || [],
+      matchedAttributes: pillLabels[p._originalIndex] || [],
     }));
 
     // Build meta from taste profile
