@@ -197,7 +197,7 @@ async function runFullPipeline(tasteProfile) {
 // Public entry point — switch between cache-only and full pipeline here.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_ONLY = true; // Set to false to restore full ScrapingDog pipeline
+const CACHE_ONLY = false; // Set to false to restore full ScrapingDog pipeline
 
 export async function runPipeline({ description, tasteProfile: providedProfile }) {
   const tasteProfile = await resolveTasteProfile(description, providedProfile);
