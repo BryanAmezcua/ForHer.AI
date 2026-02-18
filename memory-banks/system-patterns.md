@@ -6,6 +6,8 @@
 - **API:** Next.js API routes (`src/app/api/`)
 - **Component Library:** shadcn/ui (new-york style, JSX not TSX)
 - **Styling:** Tailwind CSS v4 with CSS variables for theming
+- **Deployment:** Vercel (auto-deploy on push to master)
+- **Domain:** gifther.ai (Cloudflare DNS → Vercel)
 
 ### Project Structure
 ```
@@ -19,12 +21,14 @@ ForHer.AI/
 │   │       ├── taste-profile/
 │   │       │   └── route.js    # POST endpoint for taste profile + clarification
 │   │       └── recommendations/
-│   │           └── route.js    # POST endpoint for gift recommendations (accepts pre-built taste profile)
+│   │           └── route.js    # POST endpoint for gift recommendations
 │   ├── components/
 │   │   ├── ProfilePill.jsx     # Taste-profile pill (category-colored capsule)
-│   │   ├── ProductImage.jsx    # Product image with loading/error fallback
+│   │   ├── ProductImage.jsx    # Product image with loading/error fallback + gallery
 │   │   ├── RichSummary.jsx     # Renders summary text with **bold** markers
-│   │   ├── GiftCard.jsx        # Gift card component (image, pills, CTA)
+│   │   ├── GiftCard.jsx        # Gift card component (image, pills, badges, match ring, CTA)
+│   │   ├── GiftCardSkeleton.jsx # Skeleton loading state for gift cards
+│   │   ├── MatchRing.jsx       # Animated copper confidence ring (shows when matchScore >= 85)
 │   │   └── ui/
 │   │       ├── button.jsx      # shadcn Button component
 │   │       └── textarea.jsx    # shadcn Textarea component
@@ -32,19 +36,22 @@ ForHer.AI/
 │       ├── utils.js            # cn() utility (clsx + tailwind-merge)
 │       ├── openai.js           # OpenAI client singleton + MODEL constant
 │       ├── mongoose.js         # MongoDB connection singleton (cached, targets serper-queries DB)
-│       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction
-│       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries
+│       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction + query generation
+│       ├── pipeline.js         # runPipeline() — orchestrates full product discovery pipeline
 │       ├── search-scrapingdog.js  # executeScrapingDogQueries() — ScrapingDog Shopping API + MongoDB cache
-│       ├── dedupe-serper.js    # dedupeSerperResults() — Jaccard + price clustering for shopping results
-│       ├── score-pdp.js        # scorePDP() — PDP confidence scoring (URL/title/snippet signals)
-│       ├── prune-serper.js     # pruneSerperResults() — Gift-set filter + score + cut to top 16 (enrichment pool)
-│       ├── generate-pills.js  # generatePillLabels() — LLM-generated "why this fits" pills (1-2 per product)
+│       ├── dedupe-products.js  # dedupeProducts() — Jaccard + price clustering for shopping results
+│       ├── prune-products.js   # pruneProducts() — Gift-set filter + score + cut to top 16 (enrichment pool)
 │       ├── enrich-scrapingdog.js # enrichProducts() — ScrapingDog Immersive Product API for merchant URLs + descriptions + store selection
+│       ├── generate-pills.js   # generateProductInsights() — LLM-generated pills + reaction lines
+│       ├── score-pdp.js        # scorePDP() — PDP confidence scoring (URL/title/snippet signals)
+│       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries (may be unused if merged into taste-profile)
+│       ├── debug.js            # Debug/logging utility
+│       ├── parse-price.js      # Price string parsing utility
+│       ├── strip-markdown.js   # Markdown stripping utility
 │       └── models/
 │           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
-├── gift-finder.jsx             # Original standalone prototype (not used in app)
 ├── memory-banks/               # Context tracking files
-├── .env.local                  # API keys (OPENAI_API_KEY, SCRAPINGDOG_API_KEY, etc.)
+├── .env.local                  # API keys (OPENAI_API_KEY, SCRAPINGDOG_API_KEY, MONGODB_URI)
 ├── CLAUDE.md                   # Project specs and instructions
 ├── package.json
 ├── next.config.mjs
@@ -60,7 +67,7 @@ The main page uses a `phase` state to switch between five views:
 - `'input'` — Text area for describing the recipient
 - `'thinking'` — Loading animation while generating taste profile or fetching recommendations
 - `'clarifying'` — Follow-up question with 3 pill options (only shown when description is vague)
-- `'populating'` — Skeleton cards while recommendations load
+- `'populating'` — Skeleton cards while recommendations load (messages stop cycling after "Almost there...")
 - `'results'` — Gift card grid with personalized heading
 
 **API Communication (Two-step flow):**
@@ -69,94 +76,77 @@ The main page uses a `phase` state to switch between five views:
 2. If clarification needed: client shows question, user selects option, taste profile is patched client-side
 3. Client POSTs `{ tasteProfile }` to `/api/recommendations` (pre-built profile, skips re-generation)
    - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
-- Taste profile is generated via OpenAI from the free-text description (model set in `src/lib/openai.js`)
+- Taste profile + search queries generated via a single OpenAI call from the free-text description
 
-**Product Discovery Pipeline (ScrapingDog Shopping):**
-- Single pipeline, no toggle — ScrapingDog Shopping is the only data fetching strategy
-- Flow: taste profile → `generateDeepQueries()` → `executeScrapingDogQueries()` → `dedupeSerperResults()` → `pruneSerperResults()` (gift-set filter + top 16) → `enrichProducts()` + `generatePillLabels()` (parallel) → `scorePDP()` filter → top 9 display
+**Product Discovery Pipeline:**
+- Orchestrated by `pipeline.js` — supports both cache-only and full modes (currently full)
+- Flow: taste profile → query generation (merged into taste profile LLM call) → `executeScrapingDogQueries()` → `dedupeProducts()` → `pruneProducts()` (gift-set filter + top 16) → `enrichProducts()` + `generateProductInsights()` (parallel) → `scorePDP()` filter → top 9 display
 - Generates 3 broad, natural Google-style queries via OpenAI
 - Executes queries against ScrapingDog Google Shopping API (~40+ results per query)
 - Results cached in MongoDB with 48-hour TTL
 - Cache key: `sha256("scrapingdog|US|" + normalizedQuery)` — queries normalized (stopword removal + basic stemming + sorted)
-- ScrapingDog returns richer data than Serper: ratings, reviews, extensions, extracted_price, product IDs, immersive product links
 
 **Shopping Deduplication:**
-- `src/lib/dedupe-serper.js` — `dedupeSerperResults(serperResults)` collapses duplicate products across all queries
-- Title normalization: lowercase, strip `®™©`, remove trailing store-name suffixes, drop junk words (retailer names, "free shipping", "sale", etc.), standardize synonyms (`qt`→`quart`, `oz`→`ounce`, etc.)
+- `src/lib/dedupe-products.js` — `dedupeProducts(results)` collapses duplicate products across all queries
+- Title normalization: lowercase, strip `®™©`, remove trailing store-name suffixes, drop junk words
 - Clustering: Jaccard similarity (>= 0.55) on normalized word tokens + price proximity (within 30%)
 - Winner selection: prefer listings with image, then lowest price
 - Attaches `clusterSize` to each winner for downstream scoring
-- Runs after `executeScrapingDogQueries()`, before pruning
 
 **Shopping Pruning:**
-- `src/lib/prune-serper.js` — `pruneSerperResults(products, tasteProfile)` scores and cuts to top 16 (enrichment pool)
+- `src/lib/prune-products.js` — `pruneProducts(products, tasteProfile)` scores and cuts to top 16
 - Hard filters: drop items with no image, drop gift sets/bundles (title regex patterns)
 - Weighted scoring: interest relevance (30%), budget fit (25%), confidence (20%), price sanity (10%), data completeness (10%), review volume (5%)
-- Budget fit: 1.0 if within range, 0.5 if within 20% grace zone, 0 if way outside
-- Confidence: combines cluster size (3+ = 1.0, 2 = 0.5, 1 = 0.2) + rating boost (+0.3 for 4.0+, +0.1 for 3.0+)
-- Review volume: reviewCount >= 100 → 1.0, >= 10 → 0.5, else 0.1
-- Data completeness: price (+0.5), rating (+0.25), reviews (+0.25)
-- Interest relevance: token overlap between product title and taste profile interests array (with alias fallback from interestAliases)
-- Pill labels generated by a separate LLM call, run in parallel with ScrapingDog enrichment
+- Attaches `_pruneScore` to each product for downstream matchScore calculation
 - Sorts descending, returns top 16 (ENRICH_POOL_SIZE); exports DISPLAY_COUNT = 9
-- Runs after `dedupeSerperResults()`, before enrichment
 
 **PDP Confidence Scoring:**
 - `src/lib/score-pdp.js` — `scorePDP({ url, title, price, snippet })` returns numeric confidence score
-- URL path signals: +1 product paths, -1 search/browse paths, -1 search query params
-- Shopify: +2 /products/, +1 /collections/.../products/, -2 /collections/ without /products/
-- Domain rules (+3): Amazon /dp/, Walmart /ip/, Target /p/, BestBuy /site/, Etsy /listing/
-- Title/snippet: +1 price symbol, +1 size/model indicators, -1 editorial terms
-- Editorial paths: -2 for /gift-guide/, /best-sellers/, /top-10/, /ideas/, /edit/
 - Thresholds: >= +3 accept, <= -2 reject, -1 to +2 pass as-is
 - Runs after ScrapingDog enrichment, before final assembly; trims to DISPLAY_COUNT (9)
 
 **Product Enrichment (ScrapingDog Immersive Product):**
-- `src/lib/enrich-scrapingdog.js` — `enrichProducts(products)` resolves merchant URLs and descriptions via ScrapingDog Immersive Product API
-- Each product has an `immersiveUrl` (pre-built API URL with api_key and page_token from Shopping response)
-- Response includes `stores[]` array with real merchant URLs, ratings, reviews, extensions, prices
-- Store selection algorithm picks best store: reject out-of-stock, score on PDP signals (+2), ratings (+1), in-stock (+1), free shipping (+0.5), free returns (+0.5), tiebreak by lowest total_price
-- Also extracts: product description, brand, thumbnail URLs
-- Fallback: if no stores survive or API fails, keeps Google Shopping link + null description
+- `src/lib/enrich-scrapingdog.js` — `enrichProducts(products)` resolves merchant URLs and descriptions
+- Store selection algorithm picks best store: reject out-of-stock, score on PDP signals, ratings, stock, shipping
 - Batched 5 at a time (ScrapingDog LITE plan concurrency limit)
-- Cost: ~5 credits per Immersive Product call (16 calls = 80 credits per request)
+
+**Product Insights (LLM):**
+- `src/lib/generate-pills.js` — `generateProductInsights()` generates pills + reaction lines in a single LLM call
+- Returns: matchedAttributes (1-2 pills per product) + reactionLine (predicted recipient reaction)
+
+**Pipeline Output (buildRecommendation):**
+- `pipeline.js` maps products to recommendation objects with all fields
+- matchScore: derived from prune scoring (0-1 → 0-100)
+- badgeLabel + badgeType: rule-based (>=85 → confidence, occasion present → occasion, else → social)
+- reactionLine: from LLM insights (null in cache-only mode)
 
 **Shopping Cache (MongoDB):**
 - Connection: `src/lib/mongoose.js` — cached singleton, database `serper-queries`
 - Model: `src/lib/models/shopping-cache.js` — collection `shopping-cache`
-- Document schema: `{ _id (cacheKey), query: { raw, normalized, locale }, provider, fetchedAt, expiresAt (TTL), results[] }`
-- Results include: title, link, price, extractedPrice, source, imageUrl, rating, reviews, extensions, productId, immersiveUrl
 - TTL index on `expiresAt` — MongoDB auto-deletes expired documents
-
-**Taste Profile Pipeline:**
-- `src/lib/openai.js` — OpenAI client singleton
-- `src/lib/taste-profile.js` — `generateTasteProfile(description)` sends user input to LLM, returns structured JSON
-- LLM extracts: recipient info, occasion, budget, interests, interestAliases (~10 shopping tokens per interest), aesthetic, personality, constraints, gifting context
-- Uses low temperature (0.3) for consistent structured output
-
-**Component Strategy:**
-- shadcn/ui components for base primitives (Button, Textarea)
-- Extracted domain components in `src/components/` (ProductImage, RichSummary, GiftCard, ProfilePill)
-- Tailwind utility classes for all styling — no separate CSS modules
 
 **Recommendation Card Schema:**
 Each recommendation object contains:
 ```js
 {
-  name: string,       // Product name
-  price: string,      // Display price
-  description: string,// Product description from Immersive Product
-  brand: string|null, // Brand name
-  rating: string|null,// e.g. "4.7/5" (prefers merchant-level, falls back to Google aggregate)
-  tag: string,        // Category label (e.g., "TOP PICK", "GREAT FIND")
-  matchedAttributes: [{ label: string, category: string }], // Up to 2 LLM-generated gift-fit pills
-  merchantBadges: string[],  // e.g. ["Free Shipping", "30-Day Returns"] — from store extensions
-  ctaText: string,    // Button text (e.g., "View Product")
-  ctaColor: string,   // Hex color for CTA button
-  url: string,        // Purchase link (real merchant URL from store selection)
-  imageUrl: string,   // Product image URL (primary/hero)
-  imageUrls: string[],// All product thumbnails (empty if ≤1 image; gallery triggers at 2+)
-  imageBg: string,    // Fallback background color
+  name: string,              // Product name
+  price: string,             // Display price
+  description: string,       // Product description from Immersive Product
+  brand: string|null,        // Brand name
+  rating: string|null,       // e.g. "4.7" (prefers merchant-level, falls back to Google aggregate)
+  tag: string,               // Category label (e.g., "TOP PICK", "GREAT FIND")
+  matchScore: number|null,   // 0-100 match confidence (MatchRing shows at >= 85)
+  badgeLabel: string|null,   // e.g., "Best Match", "She'll Love This"
+  badgeType: string|null,    // "confidence" | "social" | "occasion"
+  reactionLine: string|null, // LLM-generated predicted reaction quote
+  matchedAttributes: [{ label: string, category: string }], // LLM gift-fit pills
+  merchantBadges: string[],  // e.g. ["Free Shipping", "30-Day Returns"]
+  ctaText: string,           // Button text
+  ctaColor: string,          // Hex color for CTA
+  url: string,               // Purchase link (merchant URL or Google Shopping fallback)
+  imageUrl: string,          // Primary product image
+  imageUrls: string[],       // Thumbnail gallery (empty if ≤1 image)
+  imageBg: string,           // Fallback background color
 }
 ```
 
@@ -201,6 +191,9 @@ Brand color aliases:
 
 ### Animations
 - `fade-up` — Entry animation for sections (opacity + translateY)
-- `pulse-ring` — 1.8s pulsing ring for thinking indicator (replaced spinning sparkle)
+- `card-entrance` — Card entry animation
+- `badge-pop` — Badge pop-in animation
+- `pulse-ring` — 1.8s pulsing ring for thinking indicator
+- `confidence-ring-pulse` — Subtle pulse for high-confidence MatchRing (score >= 90)
 - `spin-slow` — 3s rotation (retained for potential use)
 - Staggered `animationDelay` on gift cards for sequential reveal
