@@ -86,8 +86,21 @@ This is the contract. Every field listed here must be provided by the backend. T
   badgeLabel:        String|null,   // e.g., "Best Match", "She'll Love This", "Perfect for Birthday" — rule-based from matchScore + occasion
   badgeType:         String|null,   // One of: "confidence", "social", "occasion" — drives icon + color
   reactionLine:      String|null,   // LLM-generated predicted recipient reaction. null in cache-only mode.
+  sourceTag:         String|null,   // "amazon" or null. Drives Amazon badge on frontend.
+  socialProof:       String|null,   // e.g., "50+ bought in past month". Amazon social proof text. null for non-Amazon products.
 }
 ```
+
+### Amazon Source Tag
+- `sourceTag === 'amazon'` means the product came from Amazon search (not Google Shopping)
+- Frontend should show an Amazon-branded pill badge (orange, `#FF9900`) when `sourceTag` is `"amazon"`
+- Amazon product URLs already contain the `?tag=giftherai-20` affiliate tag (applied by backend during normalization)
+- Amazon products may have additional `merchantBadges` values: `"Prime"`, `"Best Seller"`, `"Amazon's Choice"`
+
+### Social Proof
+- `socialProof` is a human-readable string from Amazon (e.g., "50+ bought in past month", "10K+ bought in past month")
+- Only present on Amazon products (`sourceTag === 'amazon'`)
+- Frontend should render this as subtle secondary text on the card when present
 
 ### Badge System
 - `badgeLabel` + `badgeType` replace the generic `tag` when both are present

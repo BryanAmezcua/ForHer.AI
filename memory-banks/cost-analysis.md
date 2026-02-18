@@ -60,6 +60,8 @@
 
 ## Revenue Projections (Amazon Affiliate)
 
+**Associate Store ID:** `giftherai-20`
+
 ### Amazon Associates Commission Rates (relevant categories)
 | Category | Rate |
 |----------|------|
