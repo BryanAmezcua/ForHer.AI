@@ -1,6 +1,7 @@
 import { generateTasteProfile } from '@/lib/taste-profile';
 import { generateDeepQueries } from '@/lib/search-queries-deep';
 import { executeScrapingDogQueries, getAllCachedResults } from '@/lib/search-scrapingdog';
+import { executeAmazonQueries } from '@/lib/search-amazon';
 import { dedupeProducts } from '@/lib/dedupe-products';
 import { pruneProducts, DISPLAY_COUNT } from '@/lib/prune-products';
 import { enrichProducts } from '@/lib/enrich-scrapingdog';
@@ -10,9 +11,12 @@ import { scorePDP, PDP_REJECT_THRESHOLD } from '@/lib/score-pdp';
 // ── Merchant badge extraction ──
 
 const BADGE_PATTERNS = [
-  { re: /free shipping/i,   label: 'Free Shipping' },
-  { re: /free delivery/i,   label: 'Free Shipping' },
-  { re: /free returns?/i,   label: 'Free Returns' },
+  { re: /^Prime$/i,          label: 'Prime' },
+  { re: /best seller/i,      label: 'Best Seller' },
+  { re: /amazon.s choice/i,  label: "Amazon's Choice" },
+  { re: /free shipping/i,    label: 'Free Shipping' },
+  { re: /free delivery/i,    label: 'Free Shipping' },
+  { re: /free returns?/i,    label: 'Free Returns' },
   { re: /(\d+)[- ]day returns?/i, label: match => `${match[1]}-Day Returns` },
 ];
 
@@ -66,6 +70,8 @@ function buildRecommendation(product, index, tasteProfile, { pills, reactionLine
     ? deriveBadge(matchScore, index, tasteProfile)
     : { badgeLabel: null, badgeType: null };
 
+  const isAmazon = product._source === 'amazon';
+
   const base = {
     name: product.title,
     price: product.price || 'Price unavailable',
@@ -78,10 +84,12 @@ function buildRecommendation(product, index, tasteProfile, { pills, reactionLine
     badgeLabel,
     badgeType,
     reactionLine: reactionLine || null,
+    sourceTag: isAmazon ? 'amazon' : null,
+    socialProof: isAmazon ? (product.socialProof || null) : null,
   };
 
   if (isEnriched) {
-    return {
+    const rec = {
       ...base,
       description: product.description || '',
       brand: product.brand || null,
@@ -92,9 +100,15 @@ function buildRecommendation(product, index, tasteProfile, { pills, reactionLine
       matchedAttributes: pills || [],
       merchantBadges: extractMerchantBadges(product.merchantExtensions),
     };
+
+    if (isAmazon && product.isPrime && !rec.merchantBadges.includes('Prime')) {
+      rec.merchantBadges.unshift('Prime');
+    }
+
+    return rec;
   }
 
-  return {
+  const rec = {
     ...base,
     description: '',
     brand: null,
@@ -104,6 +118,12 @@ function buildRecommendation(product, index, tasteProfile, { pills, reactionLine
     matchedAttributes: [],
     merchantBadges: extractMerchantBadges(product.extensions),
   };
+
+  if (isAmazon && product.isPrime && !rec.merchantBadges.includes('Prime')) {
+    rec.merchantBadges.unshift('Prime');
+  }
+
+  return rec;
 }
 
 // ── Build the meta object from a taste profile ──
@@ -154,12 +174,20 @@ async function runCacheOnlyPipeline(tasteProfile) {
 
 async function runFullPipeline(tasteProfile) {
   // Step 1: Use queries from taste profile (generated in same LLM call) or fall back to separate call
-  const deepQueries = tasteProfile.searchQueries
+  const allQueries = tasteProfile.searchQueries
     ? { queries: tasteProfile.searchQueries }
     : await generateDeepQueries(tasteProfile);
 
-  // Step 2: Execute queries via ScrapingDog Shopping API (with caching)
-  const searchResults = await executeScrapingDogQueries(deepQueries);
+  // Step 2: Split queries — first 2 → Amazon, third → Google Shopping — execute in parallel
+  const amazonQueries = { queries: allQueries.queries.slice(0, 2) };
+  const googleQueries = { queries: allQueries.queries.slice(2, 3) };
+
+  const [googleResults, amazonResults] = await Promise.all([
+    executeScrapingDogQueries(googleQueries),
+    executeAmazonQueries(amazonQueries),
+  ]);
+
+  const searchResults = [...googleResults, ...amazonResults];
 
   // Step 3: Deduplicate across queries
   const uniqueProducts = dedupeProducts(searchResults);

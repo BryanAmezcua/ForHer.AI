@@ -97,16 +97,17 @@ function selectBestStore(stores) {
 
 // Build a fallback enrichment result, with optional partial data from the API
 function buildFallback(product, partialData = {}) {
+  const isAmazon = product._source === 'amazon';
   return {
     ...product,
     merchantUrl: product.link,
-    merchantName: null,
+    merchantName: isAmazon ? 'Amazon' : null,
     description: null,
     brand: null,
     imageUrls: [],
-    merchantRating: null,
-    merchantReviews: null,
-    merchantExtensions: [],
+    merchantRating: isAmazon ? product.rating : null,
+    merchantReviews: isAmazon ? product.reviews : null,
+    merchantExtensions: isAmazon ? (product.extensions || []) : [],
     ...partialData,
   };
 }
