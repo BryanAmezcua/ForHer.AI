@@ -45,8 +45,8 @@ export function MatchRing({ score }) {
 
   if (!shouldRender) return null;
 
-  const size = 48;
-  const strokeWidth = 3;
+  const size = 40;
+  const strokeWidth = 2.5;
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
   const progress = hasAnimated ? score / 100 : 0;

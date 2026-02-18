@@ -169,7 +169,7 @@
 
 .card-glow-border {
   --border-angle: 0deg;
-  border: 1.5px solid transparent;
+  border: 1.5px solid rgba(200,149,108,0.6);
   background:
     linear-gradient(#252321, #252321) padding-box,
     conic-gradient(
@@ -230,6 +230,28 @@
   );
   background-size: 400% 100%;
   animation: skeleton-shimmer-warm 1.5s ease-in-out infinite;
+}
+
+/* ── Card hover lift (pointer devices only) ── */
+.card-hover-lift {
+  transition: transform 300ms, box-shadow 300ms;
+}
+@media (hover: hover) {
+  .card-hover-lift:hover { transform: translateY(-6px); }
+  .card-hover-lift.card-glow-border:hover {
+    box-shadow: 0 0 24px rgba(200,149,108,0.25), 0 0 48px rgba(200,149,108,0.12);
+  }
+  .card-hover-lift:not(.card-glow-border):hover {
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  }
+}
+
+/* ── CTA button hover (pointer devices only) ── */
+.cta-hover {
+  transition: transform 200ms, box-shadow 200ms;
+}
+@media (hover: hover) {
+  .cta-hover:hover { transform: scale(1.02); box-shadow: 0 0 16px rgba(200,149,108,0.3); }
 }
 
 /* ── Reduced motion ── */

@@ -123,7 +123,7 @@ function Gallery({ images, alt, fallbackColor }) {
 
   return (
     <div
-      className="group relative aspect-[4/3] overflow-hidden"
+      className="group relative aspect-[4/3] overflow-hidden touch-pan-y"
       style={{ backgroundColor: fallbackColor || '#252220' }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -199,16 +199,18 @@ function Gallery({ images, alt, fallbackColor }) {
       <div className="absolute inset-0 product-image-shimmer pointer-events-none" />
 
       {/* Dot indicators */}
-      <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-1.5 pb-2">
+      <div className="absolute bottom-0 left-0 right-0 flex justify-center gap-0 pb-1">
         {images.map((_, idx) => (
           <button
             key={idx}
             onClick={(e) => { e.stopPropagation(); goTo(idx); }}
-            className={`w-1.5 h-1.5 rounded-full transition-colors duration-200 cursor-pointer ${
-              idx === currentIndex ? 'bg-white/80' : 'bg-white/30'
-            }`}
+            className="relative w-8 h-8 flex items-center justify-center cursor-pointer"
             aria-label={`Go to image ${idx + 1}`}
-          />
+          >
+            <span className={`block w-1.5 h-1.5 rounded-full transition-colors duration-200 ${
+              idx === currentIndex ? 'bg-white/80' : 'bg-white/30'
+            }`} />
+          </button>
         ))}
       </div>
     </div>

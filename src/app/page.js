@@ -27,6 +27,13 @@ const THINKING_STEPS = [
   "Curating your picks...",
 ];
 
+const POPULATING_MESSAGES = [
+  "Checking real stores...",
+  "Comparing prices and reviews...",
+  "Finding the best options...",
+  "Almost there...",
+];
+
 // Shallow-merge a patch into the taste profile (one level deep for nested objects)
 function patchProfile(profile, patch) {
   const result = { ...profile };
@@ -63,7 +70,10 @@ export default function Home() {
   const [tasteProfile, setTasteProfile] = useState(null);
   const [clarification, setClarification] = useState(null);
   const [thinkingStep, setThinkingStep] = useState(0);
+  const [populatingMsgIndex, setPopulatingMsgIndex] = useState(0);
+  const [error, setError] = useState(null);
   const textareaRef = useRef(null);
+  const abortRef = useRef(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -81,15 +91,30 @@ export default function Home() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [phase]);
 
+  // Cycle populating progress messages
+  useEffect(() => {
+    if (phase !== 'populating') return;
+    setPopulatingMsgIndex(0);
+    const interval = setInterval(() => {
+      setPopulatingMsgIndex(i => (i + 1) % POPULATING_MESSAGES.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [phase]);
+
   const fetchRecommendations = async (profile) => {
     setPhase('thinking');
-    const skeletonTimer = setTimeout(() => setPhase('populating'), 7000);
+    setError(null);
+    const skeletonTimer = setTimeout(() => setPhase('populating'), 5500);
+
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
       const res = await fetch('/api/recommendations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tasteProfile: profile }),
+        signal: controller.signal,
       });
       const data = await res.json();
       clearTimeout(skeletonTimer);
@@ -99,8 +124,10 @@ export default function Home() {
       setPhase('results');
     } catch (err) {
       clearTimeout(skeletonTimer);
+      if (err.name === 'AbortError') return;
       console.error(err);
-      setPhase('input');
+      setError({ type: 'network', profile });
+      setPhase('error');
     }
   };
 
@@ -149,13 +176,21 @@ export default function Home() {
   };
 
   const handleStartOver = () => {
+    if (abortRef.current) abortRef.current.abort();
     setInput('');
     setRecommendations([]);
     setMeta(null);
     setTasteProfile(null);
     setClarification(null);
+    setError(null);
     setPhase('input');
     setTimeout(() => textareaRef.current?.focus(), 100);
+  };
+
+  const handleRetry = () => {
+    if (error?.profile) {
+      fetchRecommendations(error.profile);
+    }
   };
 
   return (
@@ -171,7 +206,7 @@ export default function Home() {
       <div className="relative z-10">
         {/* ==================== INPUT PHASE ==================== */}
         {phase === 'input' && (
-          <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10 relative">
+          <div className="max-w-[680px] mx-auto px-4 sm:px-6 pt-16 pb-10 relative">
             {/* Warm radial glow */}
             <div
               className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] rounded-full pointer-events-none"
@@ -180,7 +215,7 @@ export default function Home() {
 
             <header className="text-center mb-14 animate-fade-up relative">
               <BrandMark />
-              <h1 className="text-[2.6rem] font-bold text-foreground tracking-tight leading-none">
+              <h1 className="text-3xl sm:text-[2.6rem] font-bold text-foreground tracking-tight leading-none">
                 Gift Finder
               </h1>
               <p className="text-lg text-muted-foreground italic mt-1.5 tracking-wide font-normal">
@@ -189,7 +224,7 @@ export default function Home() {
             </header>
 
             <section className="text-center animate-fade-up relative" style={{ animationDelay: '0.2s' }}>
-              <h2 className="text-[1.6rem] font-semibold text-foreground mb-2">
+              <h2 className="text-xl sm:text-[1.6rem] font-semibold text-foreground mb-2">
                 Tell us about her.
               </h2>
               <p className="text-sm text-muted-foreground mb-8">
@@ -240,7 +275,7 @@ export default function Home() {
 
         {/* ==================== THINKING PHASE ==================== */}
         {phase === 'thinking' && (
-          <div className="max-w-[680px] mx-auto px-6 pt-16 pb-10">
+          <div className="max-w-[680px] mx-auto px-4 sm:px-6 pt-16 pb-10">
             <section className="text-center py-20 animate-fade-up">
               <BrandMark />
               <p className="text-xl font-semibold text-foreground mb-10">
@@ -340,49 +375,10 @@ export default function Home() {
         {phase === 'populating' && (
           <div className="animate-fade-up">
             {/* ── Nav bar (matches results layout) ── */}
-            <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-6 py-4 border-b border-border/50">
-              <div className="flex items-center gap-2 text-sm text-warm-gray-light">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
-                  <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="hidden sm:inline">New Search</span>
-              </div>
-              <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
-                Gift Finder &middot; For Her
-              </span>
-              <span className="w-4" />
-            </nav>
-
-            {/* ── Main content ── */}
-            <div className="max-w-[1000px] mx-auto px-6 pt-10 pb-16">
-              {/* Heading skeleton */}
-              <div className="text-center mb-12">
-                <div className="h-3 w-32 rounded-full bg-border/50 animate-pulse mx-auto mb-4" />
-                <div className="h-8 w-56 rounded-full bg-border/60 animate-pulse mx-auto mb-4" />
-                <div className="space-y-2 max-w-lg mx-auto">
-                  <div className="h-3.5 w-full rounded-full bg-border/40 animate-pulse" />
-                  <div className="h-3.5 w-3/4 rounded-full bg-border/40 animate-pulse mx-auto" />
-                </div>
-              </div>
-
-              {/* ── Skeleton cards ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
-                {[0, 1, 2, 3, 4].map(i => (
-                  <GiftCardSkeleton key={i} index={i} isTopPick={i === 0} />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ==================== RESULTS PHASE ==================== */}
-        {phase === 'results' && (
-          <div className="animate-fade-up">
-            {/* ── Nav bar ── */}
-            <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-6 py-4 border-b border-border/50">
+            <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border/50">
               <button
                 onClick={handleStartOver}
-                className="flex items-center gap-2 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer min-w-[44px] min-h-[44px]"
               >
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
                   <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -396,13 +392,88 @@ export default function Home() {
             </nav>
 
             {/* ── Main content ── */}
-            <div className="max-w-[1000px] mx-auto px-6 pt-10 pb-16">
+            <div className="max-w-[1000px] mx-auto px-4 sm:px-6 pt-10 pb-16">
+              {/* Heading skeleton */}
+              <div className="text-center mb-12">
+                <div className="h-3 w-32 rounded-full bg-border/50 animate-pulse mx-auto mb-4" />
+                <div className="h-8 w-56 rounded-full bg-border/60 animate-pulse mx-auto mb-4" />
+                <div className="space-y-2 max-w-lg mx-auto">
+                  <div className="h-3.5 w-full rounded-full bg-border/40 animate-pulse" />
+                  <div className="h-3.5 w-3/4 rounded-full bg-border/40 animate-pulse mx-auto" />
+                </div>
+                {/* Progress message */}
+                <p key={populatingMsgIndex} className="text-sm text-muted-foreground mt-6 animate-fade-up">
+                  {POPULATING_MESSAGES[populatingMsgIndex]}
+                </p>
+              </div>
+
+              {/* ── Skeleton cards ── */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
+                {[0, 1, 2, 3, 4].map(i => (
+                  <GiftCardSkeleton key={i} index={i} isTopPick={i === 0} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================== ERROR PHASE ==================== */}
+        {phase === 'error' && (
+          <div className="max-w-[680px] mx-auto px-4 sm:px-6 pt-16 pb-10">
+            <section className="text-center py-20 animate-fade-up">
+              <BrandMark />
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-3">
+                Something didn&apos;t go as planned
+              </h2>
+              <p className="text-sm text-muted-foreground mb-10 max-w-sm mx-auto leading-relaxed">
+                We hit a snag while finding gifts. This usually resolves quickly &mdash; worth another shot.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={handleRetry}
+                  className="px-6 py-3 rounded-xl bg-copper text-white text-sm font-semibold cta-hover active:scale-[0.98] cursor-pointer"
+                >
+                  Try again
+                </button>
+                <button
+                  onClick={handleStartOver}
+                  className="px-6 py-3 rounded-xl bg-white/[0.08] border border-border text-sm font-medium text-foreground hover:bg-white/[0.14] active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  Start over
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ==================== RESULTS PHASE ==================== */}
+        {phase === 'results' && (
+          <div className="animate-fade-up">
+            {/* ── Nav bar ── */}
+            <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border/50">
+              <button
+                onClick={handleStartOver}
+                className="flex items-center gap-2 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer min-w-[44px] min-h-[44px]"
+              >
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
+                  <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+                <span className="hidden sm:inline">New Search</span>
+              </button>
+              <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
+                Gift Finder &middot; For Her
+              </span>
+              <span className="w-4" />
+            </nav>
+
+            {/* ── Main content ── */}
+            <div className="max-w-[1000px] mx-auto px-4 sm:px-6 pt-10 pb-16">
               {/* Personalized heading */}
               <div className="text-center mb-12">
                 <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3 font-semibold">
                   Personalized Selection
                 </p>
-                <h2 className="text-[2.2rem] font-bold text-foreground tracking-tight leading-tight mb-4">
+                <h2 className="text-2xl sm:text-[2.2rem] font-bold text-foreground tracking-tight leading-tight mb-4">
                   Curated for {meta?.curatedFor || 'her'}
                 </h2>
                 <RichSummary text={meta?.summary} />

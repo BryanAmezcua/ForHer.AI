@@ -56,10 +56,10 @@ export function GiftCard({ gift, index, isTopPick }) {
 
   return (
     <div
-      className={`rounded-2xl overflow-hidden flex flex-col animate-card-entrance transition-all duration-300 ${
+      className={`rounded-2xl overflow-hidden flex flex-col animate-card-entrance card-hover-lift ${
         isTopPick
-          ? 'card-glow-border backdrop-blur-sm hover:-translate-y-1.5 hover:shadow-[0_0_24px_rgba(200,149,108,0.25),0_0_48px_rgba(200,149,108,0.12)]'
-          : 'bg-white/[0.05] backdrop-blur-sm border border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)] hover:-translate-y-1.5 hover:shadow-[0_8px_32px_rgba(0,0,0,0.5)]'
+          ? 'card-glow-border backdrop-blur-sm'
+          : 'bg-white/[0.05] backdrop-blur-sm border border-border/30 shadow-[0_2px_24px_rgba(0,0,0,0.3)]'
       }`}
       style={{ animationDelay: `${0.1 + index * 0.12}s` }}
     >
@@ -75,11 +75,11 @@ export function GiftCard({ gift, index, isTopPick }) {
       <div className="p-5 flex flex-col flex-1">
         {/* Tag / Badge + price + match ring */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-1.5 animate-badge-pop">
+          <div className="flex items-center gap-1.5 animate-badge-pop min-w-0">
             {hasBadge ? (
               <>
                 <BadgeIcon type={gift.badgeType} />
-                <span className={`text-[10px] uppercase tracking-[0.08em] font-semibold ${
+                <span className={`text-[10px] uppercase tracking-[0.08em] font-semibold truncate ${
                   BADGE_COLORS[gift.badgeType] || 'text-warm-gray-light'
                 }`}>
                   {gift.badgeLabel}
@@ -99,7 +99,7 @@ export function GiftCard({ gift, index, isTopPick }) {
               </>
             )}
           </div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-shrink-0">
             {gift.matchScore >= 85 && (
               <MatchRing score={gift.matchScore} />
             )}
@@ -145,7 +145,7 @@ export function GiftCard({ gift, index, isTopPick }) {
 
         {/* CTA button */}
         <button
-          className="w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold transition-all duration-200 hover:scale-[1.02] hover:shadow-[0_0_16px_rgba(200,149,108,0.3)] active:scale-[0.98] cursor-pointer"
+          className="w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold cta-hover active:scale-[0.98] cursor-pointer"
           style={{ backgroundColor: gift.ctaColor }}
           onClick={() => {
             if (gift.url && gift.url !== '#') {
