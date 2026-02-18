@@ -7,7 +7,7 @@ const manrope = Manrope({
 });
 
 export const metadata = {
-  title: 'ForHer.AI — Gift Finder',
+  title: 'GiftHer.ai — Find the Perfect Gift for Her',
   description: 'Find the perfect gift for the women in your life',
 };
 

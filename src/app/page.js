@@ -221,12 +221,9 @@ export default function Home() {
 
             <header className="text-center mb-14 animate-fade-up relative">
               <BrandMark />
-              <h1 className="text-3xl sm:text-[2.6rem] font-bold text-foreground tracking-tight leading-none">
-                Gift Finder
+              <h1 className="text-3xl sm:text-[2.6rem] font-bold tracking-tight leading-none">
+                <span className="text-foreground">Gift</span><span className="text-copper">Her</span><span className="text-muted-foreground font-normal">.ai</span>
               </h1>
-              <p className="text-lg text-muted-foreground italic mt-1.5 tracking-wide font-normal">
-                for her
-              </p>
             </header>
 
             <section className="text-center animate-fade-up relative" style={{ animationDelay: '0.2s' }}>
@@ -336,12 +333,9 @@ export default function Home() {
             {/* Compact header */}
             <header className="text-center mb-8 sm:mb-10">
               <BrandMark />
-              <h1 className="text-2xl sm:text-[2.2rem] font-bold text-foreground tracking-tight leading-none">
-                Gift Finder
+              <h1 className="text-2xl sm:text-[2.2rem] font-bold tracking-tight leading-none">
+                <span className="text-foreground">Gift</span><span className="text-copper">Her</span><span className="text-muted-foreground font-normal">.ai</span>
               </h1>
-              <p className="text-sm text-muted-foreground italic mt-1 tracking-wide font-normal">
-                for her
-              </p>
             </header>
 
             {/* User's input shown as read-only context */}
@@ -392,7 +386,7 @@ export default function Home() {
                 <span className="hidden sm:inline">New Search</span>
               </button>
               <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
-                Gift Finder &middot; For Her
+                GiftHer.ai
               </span>
               <span className="w-4" />
             </nav>
@@ -467,7 +461,7 @@ export default function Home() {
                 <span className="hidden sm:inline">New Search</span>
               </button>
               <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
-                Gift Finder &middot; For Her
+                GiftHer.ai
               </span>
               <span className="w-4" />
             </nav>
