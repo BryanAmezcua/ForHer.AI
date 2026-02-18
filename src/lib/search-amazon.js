@@ -148,6 +148,7 @@ async function executeOneQuery(rawQuery) {
     api_key: API_KEY,
     domain: 'com',
     query: rawQuery,
+    page: '1'
   });
 
   const response = await fetch(`${AMAZON_ENDPOINT}?${params}`);
