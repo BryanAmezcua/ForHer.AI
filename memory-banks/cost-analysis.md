@@ -21,29 +21,29 @@
 ### Per-Credit Cost
 - $40 / 200,000 = **$0.0002 per credit**
 
-### Per Uncached Request Breakdown (Current — Google Shopping only)
+### Per Uncached Request Breakdown (Current — 2 Amazon + 1 Google Shopping)
+| Step | Credits per call | Calls | Total credits |
+|------|-----------------|-------|---------------|
+| Google Shopping query | 10 | 1 | 10 |
+| Amazon Search query | 10 | 2 | 20 |
+| Immersive Product API (Google products only) | 5 | ~8 | ~40 |
+| **Total per uncached request** | | | **~70** |
+
+### Cost Per Request
+- ~70 credits × $0.0002 = **$0.014 (~1.4 cents)**
+
+### Monthly Capacity
+- 200,000 / 70 = **~2,857 uncached requests/month**
+
+### Previous (Google Shopping only, for reference)
 | Step | Credits per call | Calls | Total credits |
 |------|-----------------|-------|---------------|
 | Shopping API query | 10 | 3 | 30 |
 | Immersive Product API (enrichment) | 5 | 16 | 80 |
 | **Total per uncached request** | | | **110** |
 
-### Cost Per Request
-- 110 credits × $0.0002 = **$0.022 (~2.2 cents)**
-
-### Monthly Capacity
-- 200,000 / 110 = **~1,818 uncached requests/month**
-
-### Projected with Amazon Integration
-| Step | Credits per call | Calls | Total credits |
-|------|-----------------|-------|---------------|
-| Google Shopping query | 10 | 3 | 30 |
-| Amazon Search query | 1 | 3 | 3 |
-| Immersive Product (Google products only) | 5 | ~10 | 50 |
-| **Total per uncached request** | | | **~83** |
-
-- With Amazon: 200,000 / 83 = **~2,410 uncached requests/month** (32% more capacity)
-- Amazon products skip Immersive Product enrichment (already have rich data)
+- Was: 200,000 / 110 = ~1,818 uncached requests/month
+- **Savings: ~36% fewer credits per request, ~57% more monthly capacity**
 
 ### Notes
 - Cached requests cost nothing (MongoDB 48-hour TTL cache)

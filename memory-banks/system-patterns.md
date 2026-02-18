@@ -39,6 +39,8 @@ ForHer.AI/
 │       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction + query generation
 │       ├── pipeline.js         # runPipeline() — orchestrates full product discovery pipeline
 │       ├── search-scrapingdog.js  # executeScrapingDogQueries() — ScrapingDog Shopping API + MongoDB cache
+│       ├── search-amazon.js    # executeAmazonQueries() — ScrapingDog Amazon Search API + MongoDB cache + affiliate tagging
+│       ├── clean-title.js      # cleanTitle() — strips e-commerce junk from product titles (brands, recipients, sizes)
 │       ├── dedupe-products.js  # dedupeProducts() — Jaccard + price clustering for shopping results
 │       ├── prune-products.js   # pruneProducts() — Gift-set filter + score + cut to top 16 (enrichment pool)
 │       ├── enrich-scrapingdog.js # enrichProducts() — ScrapingDog Immersive Product API for merchant URLs + descriptions + store selection
@@ -50,6 +52,9 @@ ForHer.AI/
 │       ├── strip-markdown.js   # Markdown stripping utility
 │       └── models/
 │           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
+├── tasks/                      # Agent task instruction files for multi-agent workflow
+├── public/
+│   └── icon.svg                # Copper sparkle favicon (SVG)
 ├── memory-banks/               # Context tracking files
 ├── .env.local                  # API keys (OPENAI_API_KEY, SCRAPINGDOG_API_KEY, MONGODB_URI)
 ├── CLAUDE.md                   # Project specs and instructions
@@ -80,11 +85,18 @@ The main page uses a `phase` state to switch between five views:
 
 **Product Discovery Pipeline:**
 - Orchestrated by `pipeline.js` — supports both cache-only and full modes (currently full)
-- Flow: taste profile → query generation (merged into taste profile LLM call) → `executeScrapingDogQueries()` → `dedupeProducts()` → `pruneProducts()` (gift-set filter + top 16) → `enrichProducts()` + `generateProductInsights()` (parallel) → `scorePDP()` filter → top 9 display
-- Generates 3 broad, natural Google-style queries via OpenAI
-- Executes queries against ScrapingDog Google Shopping API (~40+ results per query)
+- Flow: taste profile → query generation (merged into taste profile LLM call) → 2 Amazon queries + 1 Google Shopping query (parallel) → `dedupeProducts()` → `pruneProducts()` (gift-set filter + top 16) → `enrichProducts()` + `generateProductInsights()` (parallel) → `scorePDP()` filter → top 9 display
+- Generates 3 broad, natural queries via OpenAI; first 2 go to Amazon, third to Google Shopping
+- Amazon results: rich data (Prime, ratings, reviews, social proof), affiliate-tagged URLs, skip Immersive Product enrichment
+- Google Shopping results: enriched via ScrapingDog Immersive Product API for merchant URLs + descriptions
 - Results cached in MongoDB with 48-hour TTL
-- Cache key: `sha256("scrapingdog|US|" + normalizedQuery)` — queries normalized (stopword removal + basic stemming + sorted)
+- Cache keys: `sha256("scrapingdog|US|" + normalizedQuery)` for Google, `sha256("amazon|US|" + normalizedQuery)` for Amazon
+- Queries normalized: stopword removal + basic stemming + sorted
+
+**Title Cleaning:**
+- `src/lib/clean-title.js` — `cleanTitle(raw)` strips e-commerce junk from product titles
+- Strips: ALL-CAPS brand prefixes, trailing parenthesized content, recipient lists, size/dimension specs, brand suffixes
+- Truncates to ~60 chars at word boundary; collapses whitespace
 
 **Shopping Deduplication:**
 - `src/lib/dedupe-products.js` — `dedupeProducts(results)` collapses duplicate products across all queries
@@ -109,6 +121,7 @@ The main page uses a `phase` state to switch between five views:
 - `src/lib/enrich-scrapingdog.js` — `enrichProducts(products)` resolves merchant URLs and descriptions
 - Store selection algorithm picks best store: reject out-of-stock, score on PDP signals, ratings, stock, shipping
 - Batched 5 at a time (ScrapingDog LITE plan concurrency limit)
+- Amazon products (`_source === 'amazon'`) skip enrichment (no `immersiveUrl`), fall through to `buildFallback()` which preserves their rich search data (rating, reviews, extensions, merchantName = "Amazon")
 
 **Product Insights (LLM):**
 - `src/lib/generate-pills.js` — `generateProductInsights()` generates pills + reaction lines in a single LLM call
@@ -129,24 +142,26 @@ The main page uses a `phase` state to switch between five views:
 Each recommendation object contains:
 ```js
 {
-  name: string,              // Product name
+  name: string,              // Product name (cleaned via cleanTitle())
   price: string,             // Display price
   description: string,       // Product description from Immersive Product
   brand: string|null,        // Brand name
-  rating: string|null,       // e.g. "4.7" (prefers merchant-level, falls back to Google aggregate)
+  rating: string|null,       // e.g. "4.7" (prefers merchant-level, falls back to Google/Amazon aggregate)
   tag: string,               // Category label (e.g., "TOP PICK", "GREAT FIND")
   matchScore: number|null,   // 0-100 match confidence (MatchRing shows at >= 85)
   badgeLabel: string|null,   // e.g., "Best Match", "She'll Love This"
   badgeType: string|null,    // "confidence" | "social" | "occasion"
   reactionLine: string|null, // LLM-generated predicted reaction quote
   matchedAttributes: [{ label: string, category: string }], // LLM gift-fit pills
-  merchantBadges: string[],  // e.g. ["Free Shipping", "30-Day Returns"]
+  merchantBadges: string[],  // e.g. ["Prime", "Free Shipping", "Best Seller", "30-Day Returns"]
   ctaText: string,           // Button text
   ctaColor: string,          // Hex color for CTA
-  url: string,               // Purchase link (merchant URL or Google Shopping fallback)
+  url: string,               // Purchase link (merchant URL, Amazon affiliate link, or Google Shopping fallback)
   imageUrl: string,          // Primary product image
   imageUrls: string[],       // Thumbnail gallery (empty if ≤1 image)
   imageBg: string,           // Fallback background color
+  sourceTag: string|null,    // "amazon" or null — drives Amazon badge on frontend
+  socialProof: string|null,  // e.g. "50+ bought in past month" — Amazon social proof
 }
 ```
 
@@ -188,6 +203,7 @@ Brand color aliases:
 | `budget` | warm-gray/12 | warm-gray (#8a8380) |
 | `context` | white/6 | warm-gray (#8a8380) |
 | `merchant` | sage-green/10 | muted sage (#7a9a7a) |
+| `amazon` | orange/12 | Amazon orange (#FF9900) |
 
 ### Animations
 - `fade-up` — Entry animation for sections (opacity + translateY)

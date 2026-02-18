@@ -56,9 +56,14 @@
 - [ ] Error handling for API failures (basic — resets to input)
 - [ ] Input validation / minimum length guidance
 
-### Phase 1.5 — Planned (Pre-Phase 2)
-- [ ] Amazon product integration via ScrapingDog Amazon Search API
-- [ ] Amazon Associates signup + affiliate link tagging
+### Phase 1.5 — Amazon Integration (Complete)
+- [x] Amazon product integration via ScrapingDog Amazon Search API
+- [x] Amazon Associates affiliate link tagging (`?tag=giftherai-20`)
+- [x] Amazon badge on frontend (orange pill, social proof text)
+- [x] Title cleaning utility (`clean-title.js`)
+- [x] Favicon, apple-touch-icon, and OG image
+- [ ] Verify Amazon integration live in production
+- [ ] Monitor credit savings (~70 credits/request vs. 110)
 - [ ] Affiliate revenue tracking
 
 ### Phase 2 — Not Started
