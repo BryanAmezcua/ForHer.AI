@@ -96,7 +96,13 @@ export default function Home() {
     if (phase !== 'populating') return;
     setPopulatingMsgIndex(0);
     const interval = setInterval(() => {
-      setPopulatingMsgIndex(i => (i + 1) % POPULATING_MESSAGES.length);
+      setPopulatingMsgIndex(i => {
+        if (i >= POPULATING_MESSAGES.length - 1) {
+          clearInterval(interval);
+          return i;
+        }
+        return i + 1;
+      });
     }, 3000);
     return () => clearInterval(interval);
   }, [phase]);
