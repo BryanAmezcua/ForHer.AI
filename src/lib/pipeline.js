@@ -153,8 +153,10 @@ async function runCacheOnlyPipeline(tasteProfile) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function runFullPipeline(tasteProfile) {
-  // Step 1: Generate broad queries from taste profile
-  const deepQueries = await generateDeepQueries(tasteProfile);
+  // Step 1: Use queries from taste profile (generated in same LLM call) or fall back to separate call
+  const deepQueries = tasteProfile.searchQueries
+    ? { queries: tasteProfile.searchQueries }
+    : await generateDeepQueries(tasteProfile);
 
   // Step 2: Execute queries via ScrapingDog Shopping API (with caching)
   const searchResults = await executeScrapingDogQueries(deepQueries);

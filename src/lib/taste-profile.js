@@ -47,7 +47,12 @@ Analyze the description and return a JSON object with these fields:
         "patch": object             // Partial taste profile fields to merge (e.g. { "budget": { "min": 50, "max": 100 } })
       }
     ]
-  } | null                          // null if description is already rich enough
+  } | null,                         // null if description is already rich enough
+  "searchQueries": [                // 3 broad Google Shopping search queries — ONLY when clarification is null
+    { "q": string },
+    { "q": string },
+    { "q": string }
+  ] | null                          // null when clarification is present (queries generated on next request)
 }
 
 Rules:
@@ -68,6 +73,15 @@ Clarification rules:
 - Budget patch example: { "budget": { "min": 50, "max": 100, "flexibility": "flexible" } }
 - Interest patch example: { "interests": ["cooking", "baking"] } (these get MERGED with existing interests)
 - Occasion patch example: { "occasion": { "event": "birthday" } }
+Search query rules (only when clarification is null):
+- Generate exactly 3 broad, natural Google search queries a real person would type to find gifts based on this profile.
+- Each query should explore a DIFFERENT angle/interest from the profile.
+- Keep queries under 8 words when possible. Use simple, everyday language.
+- Incorporate the recipient relationship and key interests.
+- Good: "gifts for girlfriend who likes cooking", "cozy gifts for homebody girlfriend", "unique birthday gifts for wife who loves yoga"
+- Bad (too specific/SEO-y): "artisan hand-thrown ceramic pour-over dripper gift set", "best luxury organic body oil premium gift box 2024"
+- Respect avoidCategories and constraints — never generate queries for excluded items.
+- When clarification is NOT null, set searchQueries to null (queries will be generated on the next request with more context).
 - Return ONLY the JSON object, no markdown fencing, no explanation.`;
 
 export async function generateTasteProfile(description) {
@@ -78,7 +92,7 @@ export async function generateTasteProfile(description) {
       { role: 'user', content: description },
     ],
     temperature: 0.3,
-    max_tokens: 1500,
+    max_tokens: 1700,
   });
 
   const content = response.choices[0].message.content.trim();
