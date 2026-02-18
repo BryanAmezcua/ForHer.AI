@@ -7,6 +7,7 @@ import { pruneProducts, DISPLAY_COUNT } from '@/lib/prune-products';
 import { enrichProducts } from '@/lib/enrich-scrapingdog';
 import { generateProductInsights } from '@/lib/generate-pills';
 import { scorePDP, PDP_REJECT_THRESHOLD } from '@/lib/score-pdp';
+import { cleanTitle } from '@/lib/clean-title';
 
 // ── Merchant badge extraction ──
 
@@ -73,7 +74,7 @@ function buildRecommendation(product, index, tasteProfile, { pills, reactionLine
   const isAmazon = product._source === 'amazon';
 
   const base = {
-    name: product.title,
+    name: cleanTitle(product.title),
     price: product.price || 'Price unavailable',
     rating: product.rating || null,
     tag: index === 0 ? 'TOP PICK' : 'GREAT FIND',
