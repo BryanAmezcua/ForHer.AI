@@ -129,9 +129,19 @@ export function GiftCard({ gift, index, isTopPick }) {
           </div>
         )}
 
+        {/* Social proof */}
+        {gift.socialProof && (
+          <p className="text-[11px] text-warm-gray-light/70 mb-2">
+            {gift.socialProof}
+          </p>
+        )}
+
         {/* Pills */}
-        {(gift.matchedAttributes?.length > 0 || gift.merchantBadges?.length > 0) ? (
+        {(gift.matchedAttributes?.length > 0 || gift.merchantBadges?.length > 0 || gift.sourceTag === 'amazon') ? (
           <div className="flex flex-wrap gap-1.5 mb-auto">
+            {gift.sourceTag === 'amazon' && (
+              <ProfilePill label="Amazon" category="amazon" />
+            )}
             {gift.matchedAttributes?.map((attr, i) => (
               <ProfilePill key={`fit-${i}`} label={attr.label} category={attr.category} />
             ))}
