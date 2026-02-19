@@ -64,13 +64,11 @@ npm run start  # Start production server
 - **ScrapingDog:** Google Shopping API + Amazon Search API + Immersive Product API. ~70 credits per uncached request (~2,857 requests/month on LITE plan $40/mo). Amazon products skip Immersive Product enrichment.
 - **Vercel auto-deploy:** Every push to `master` triggers a production deployment.
 
-### Multi-Agent Workflow
-- Git worktrees for parallel agent work: `ForHer-frontend/` (frontend branch), `ForHer-backend/` (backend branch), `ForHer.AI/` (master, orchestrator)
-- Frontend agent owns: `src/app/page.js`, `src/app/globals.css`, `src/app/layout.js`, `src/components/**`
-- Backend agent owns: `src/app/api/**`, `src/lib/**`, `src/lib/models/**`
-- API contract at `memory-banks/api-contract.md` defines shared interface
-- Memory banks are read-only on agent branches — only master updates them after merges
-- Orchestrator (master) merges branches, updates memory banks, rebases worktrees
+### Development Workflow
+- Single worktree on `master` branch — all work happens in `ForHer.AI/`
+- For parallel agent work: open multiple Claude Code sessions in the same repo, each working on different files
+- For larger independent features: create feature worktrees (e.g., `git worktree add ../ForHer-wishlist feature/wishlist`) — split by feature, not by layer
+- API contract at `memory-banks/api-contract.md` defines frontend/backend interface
 
 ### File Conventions
 - Components: `src/components/ui/*.jsx` (shadcn primitives), `src/components/*.jsx` (domain components)

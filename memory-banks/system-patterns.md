@@ -52,7 +52,6 @@ ForHer.AI/
 │       ├── strip-markdown.js   # Markdown stripping utility
 │       └── models/
 │           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
-├── tasks/                      # Agent task instruction files for multi-agent workflow
 ├── public/
 │   └── icon.svg                # Copper sparkle favicon (SVG)
 ├── memory-banks/               # Context tracking files
