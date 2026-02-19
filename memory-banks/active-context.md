@@ -65,7 +65,7 @@
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI for all LLM calls (model configured in `src/lib/openai.js`)
-- **MongoDB in use** for shopping cache (both Google and Amazon results); broader persistence deferred to Phase 3
+- **MongoDB in use** — cluster `cached-data`, database `GiftHer`, collection `products` for shopping cache (both Google and Amazon results); broader persistence deferred to Phase 3
 - **ScrapingDog active** for Google Shopping search, Amazon search, and Immersive Product enrichment (Google products only). LITE plan: 5 concurrent requests, ~2,857 uncached requests/month (up from ~1,818).
 - **Deployment:** Vercel Pro ($20/mo) + Cloudflare DNS + gifther.ai domain
 - **Amazon Associates** — Associate Store ID: `giftherai-20`. Requires 3 qualifying sales in 180 days. PA-API 5.0 deprecated April 2026; Creators API for future use.

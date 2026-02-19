@@ -31,4 +31,4 @@ const shoppingCacheSchema = new mongoose.Schema({
 
 export const ShoppingCache =
   mongoose.models.ShoppingCache ||
-  mongoose.model('ShoppingCache', shoppingCacheSchema, 'shopping-cache');
+  mongoose.model('ShoppingCache', shoppingCacheSchema, 'products');

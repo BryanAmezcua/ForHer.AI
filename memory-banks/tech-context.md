@@ -60,7 +60,7 @@ npm run start  # Start production server
 - **App Router:** Using Next.js App Router (not Pages Router)
 - **Client-side main page:** `page.js` uses `'use client'` for interactive state management
 - **Remote images allowed:** `next.config.mjs` allows images from any HTTPS hostname
-- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`, targeting `serper-queries` database. Used for ScrapingDog shopping result caching. Atlas IP whitelist: `0.0.0.0/0` (required for Vercel serverless).
+- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`. Cluster: `cached-data`, database: `GiftHer`. Collections: `products` (scraped product cache, 48h TTL). Atlas IP whitelist: `0.0.0.0/0` (required for Vercel serverless).
 - **ScrapingDog:** Google Shopping API + Amazon Search API + Immersive Product API. ~70 credits per uncached request (~2,857 requests/month on LITE plan $40/mo). Amazon products skip Immersive Product enrichment.
 - **Vercel auto-deploy:** Every push to `master` triggers a production deployment.
 

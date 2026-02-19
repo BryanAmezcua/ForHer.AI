@@ -133,8 +133,8 @@ The main page uses a `phase` state to switch between five views:
 - reactionLine: from LLM insights (null in cache-only mode)
 
 **Shopping Cache (MongoDB):**
-- Connection: `src/lib/mongoose.js` — cached singleton, database `serper-queries`
-- Model: `src/lib/models/shopping-cache.js` — collection `shopping-cache`
+- Connection: `src/lib/mongoose.js` — cached singleton, cluster `cached-data`, database `GiftHer`
+- Model: `src/lib/models/shopping-cache.js` — collection `products`
 - TTL index on `expiresAt` — MongoDB auto-deletes expired documents
 
 **Recommendation Card Schema:**
