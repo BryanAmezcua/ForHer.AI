@@ -35,6 +35,21 @@ const BUDGET_PRESETS = [
   { label: "Over $100", append: " I'm willing to spend over $100 for the right gift." },
 ];
 
+// Detect whether the user mentioned a budget in any common form
+function hasBudgetMention(text) {
+  return /\$\s?\d|\bbudget\b|\bspend|\bunder\s+\d|\bsplurge\b|\bcheap\b|\bafford|\bprice[ds]?\b|\bcosts?\b|\bamount\b|\btotal\b/i.test(text);
+}
+
+// Static clarification shown instantly when no budget is detected
+const BUDGET_CLARIFICATION = {
+  question: 'Any rough budget in mind so we don\u2019t overshoot?',
+  options: [
+    { label: 'Under $50',   patch: { budget: { min: 0,   max: 50,  flexibility: 'flexible' } } },
+    { label: '$50\u2013$100',  patch: { budget: { min: 50,  max: 100, flexibility: 'flexible' } } },
+    { label: '$100+',       patch: { budget: { min: 100, max: null, flexibility: 'open' } } },
+  ],
+};
+
 const THINKING_STEPS = [
   "Reading between the lines...",
   "Searching for the perfect gifts...",
@@ -90,6 +105,7 @@ export default function Home() {
   const [error, setError] = useState(null);
   const textareaRef = useRef(null);
   const abortRef = useRef(null);
+  const profilePromiseRef = useRef(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -157,28 +173,33 @@ export default function Home() {
     }
   };
 
+  // Fire the taste-profile fetch (returns a promise, does NOT await)
+  const startProfileFetch = () => {
+    const promise = fetch('/api/taste-profile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: input }),
+    }).then(r => r.json()).then(d => d.tasteProfile);
+    profilePromiseRef.current = promise;
+    return promise;
+  };
+
   const handleSubmit = async () => {
     if (!input.trim()) return;
+
+    if (!hasBudgetMention(input)) {
+      // No budget detected → show budget pills instantly, prefetch profile in background
+      setClarification(BUDGET_CLARIFICATION);
+      setPhase('clarifying');
+      startProfileFetch();
+      return;
+    }
+
+    // Budget present → go straight through
     setPhase('thinking');
-
     try {
-      // Step 1: Generate taste profile (fast — ~1-2s)
-      const res = await fetch('/api/taste-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ description: input }),
-      });
-      const { tasteProfile: profile } = await res.json();
+      const profile = await startProfileFetch();
       setTasteProfile(profile);
-
-      // Step 2: Check if clarification is needed
-      if (profile.clarification) {
-        setClarification(profile.clarification);
-        setPhase('clarifying');
-        return;
-      }
-
-      // Step 3: Description is rich enough — run full pipeline
       await fetchRecommendations(profile);
     } catch (err) {
       console.error(err);
@@ -187,11 +208,19 @@ export default function Home() {
   };
 
   const handleClarificationSelect = async (option) => {
-    const patched = patchProfile(tasteProfile, option.patch);
-    patched.clarification = null;
-    setTasteProfile(patched);
+    setPhase('thinking');
     setClarification(null);
-    await fetchRecommendations(patched);
+
+    try {
+      // Await the profile that's been fetching in the background
+      const profile = await profilePromiseRef.current;
+      const patched = patchProfile(profile, option.patch);
+      setTasteProfile(patched);
+      await fetchRecommendations(patched);
+    } catch (err) {
+      console.error(err);
+      setPhase('input');
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -203,6 +232,7 @@ export default function Home() {
 
   const handleStartOver = () => {
     if (abortRef.current) abortRef.current.abort();
+    profilePromiseRef.current = null;
     setInput('');
     setPresetStep('persona');
     setRecommendations([]);

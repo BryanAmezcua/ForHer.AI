@@ -78,6 +78,17 @@
 - [x] "New Search" resets URL back to `/`
 - [ ] Verify live in production
 
+### Instant Budget Detection & LLM Simplification (Complete)
+- [x] Client-side budget regex (`hasBudgetMention()`) in `page.js`
+- [x] Static `BUDGET_CLARIFICATION` object (instant budget pills, no LLM round-trip)
+- [x] Parallel prefetch: taste profile API runs in background while user picks budget (`profilePromiseRef`)
+- [x] Removed `clarification` field and all clarification rules from LLM prompt
+- [x] LLM always generates 3 `searchQueries` (no conditional, eliminates `generateDeepQueries` fallback)
+- [x] Renamed `generateTasteProfile` → `generateProfileAndQueries`
+- [x] Bumped `max_tokens` 1700 → 1900
+- [x] Updated imports in `route.js` and `pipeline.js`
+- [x] Removed `clarification: undefined` stripping from `resolveTasteProfile()`
+
 ### Phase 2 — Not Started
 - [ ] Reject a pick and say why
 - [ ] System returns alternatives informed by rejection

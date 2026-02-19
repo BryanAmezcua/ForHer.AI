@@ -1,5 +1,4 @@
-import { generateTasteProfile } from '@/lib/taste-profile';
-import { generateDeepQueries } from '@/lib/search-queries-deep';
+import { generateProfileAndQueries } from '@/lib/taste-profile';
 import { executeScrapingDogQueries, getAllCachedResults } from '@/lib/search-scrapingdog';
 import { executeAmazonQueries } from '@/lib/search-amazon';
 import { dedupeProducts } from '@/lib/dedupe-products';
@@ -144,10 +143,8 @@ function buildMeta(tasteProfile, recommendationCount) {
 // ── Resolve the taste profile (use provided or generate from description) ──
 
 async function resolveTasteProfile(description, providedProfile) {
-  if (providedProfile) {
-    return { ...providedProfile, clarification: undefined };
-  }
-  return generateTasteProfile(description);
+  if (providedProfile) return providedProfile;
+  return generateProfileAndQueries(description);
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -174,14 +171,9 @@ async function runCacheOnlyPipeline(tasteProfile) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function runFullPipeline(tasteProfile) {
-  // Step 1: Use queries from taste profile (generated in same LLM call) or fall back to separate call
-  const allQueries = tasteProfile.searchQueries
-    ? { queries: tasteProfile.searchQueries }
-    : await generateDeepQueries(tasteProfile);
-
-  // Step 2: Split queries — first 2 → Amazon, third → Google Shopping — execute in parallel
-  const amazonQueries = { queries: allQueries.queries.slice(0, 2) };
-  const googleQueries = { queries: allQueries.queries.slice(2, 3) };
+  // Step 1: Split queries — first 2 → Amazon, third → Google Shopping — execute in parallel
+  const amazonQueries = { queries: tasteProfile.searchQueries.slice(0, 2) };
+  const googleQueries = { queries: tasteProfile.searchQueries.slice(2, 3) };
 
   const [googleResults, amazonResults] = await Promise.all([
     executeScrapingDogQueries(googleQueries),

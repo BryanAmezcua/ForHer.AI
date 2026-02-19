@@ -39,20 +39,11 @@ Analyze the description and return a JSON object with these fields:
     "avoidCategories": string[],    // Categories to skip (e.g. "candles", "gift cards")
     "leanToward": string | null     // If the user hinted at a direction (e.g. "something experiential", "something she'd never buy herself")
   },
-  "clarification": {                // ONE follow-up question if the description is too vague for quality results
-    "question": string,             // Warm, conversational question (e.g. "Any rough budget in mind so we don't overshoot?")
-    "options": [                    // Exactly 3 quick-answer options
-      {
-        "label": string,            // Short display text (2-5 words)
-        "patch": object             // Partial taste profile fields to merge (e.g. { "budget": { "min": 50, "max": 100 } })
-      }
-    ]
-  } | null,                         // null if description is already rich enough
-  "searchQueries": [                // 3 broad Google Shopping search queries — ONLY when clarification is null
+  "searchQueries": [                // 3 broad Google Shopping search queries — ALWAYS generate these
     { "q": string },
     { "q": string },
     { "q": string }
-  ] | null                          // null when clarification is present (queries generated on next request)
+  ]
 }
 
 Rules:
@@ -63,17 +54,9 @@ Rules:
 - Be specific with interests. "Cooking" is fine, but "baking sourdough" is better if the description supports it.
 - Infer personality and aesthetic from context clues, not just explicit statements.
 - For interestAliases: generate ~10 shopping-relevant tokens per interest. These should be product names, brand-neutral terms, synonyms, and related words that would appear in Google Shopping titles. Example: "fancy coffee" → ["espresso", "pour-over", "latte", "barista", "grinder", "french press", "cold brew", "drip", "moka", "chemex"]. Focus on commercial/product language, not abstract concepts. Every interest in the interests array must have a corresponding entry in interestAliases.
+- ALWAYS generate exactly 3 searchQueries. Never omit them.
 
-Clarification rules:
-- Return clarification as null if the description provides enough signal for quality recommendations (has specific interests AND at least one of: budget range, occasion, or clear relationship context).
-- If the description IS vague or missing high-impact context, return the single highest-ROI follow-up question.
-- Priority order for what to ask about: (1) budget — most impact on filtering, (2) specific interests/hobbies — most impact on search quality, (3) occasion — affects gift appropriateness.
-- The question must be warm and conversational, not robotic. Write it like a friend would ask.
-- Return exactly 3 options. Each option's "label" is short display text. Each option's "patch" is a partial object matching this profile's schema that will be merged in.
-- Budget patch example: { "budget": { "min": 50, "max": 100, "flexibility": "flexible" } }
-- Interest patch example: { "interests": ["cooking", "baking"] } (these get MERGED with existing interests)
-- Occasion patch example: { "occasion": { "event": "birthday" } }
-Search query rules (only when clarification is null):
+Search query rules:
 - Generate exactly 3 broad, natural Google search queries a real person would type to find gifts based on this profile.
 - Each query should explore a DIFFERENT angle/interest from the profile.
 - Keep queries under 8 words when possible. Use simple, everyday language.
@@ -81,10 +64,9 @@ Search query rules (only when clarification is null):
 - Good: "gifts for girlfriend who likes cooking", "cozy gifts for homebody girlfriend", "unique birthday gifts for wife who loves yoga"
 - Bad (too specific/SEO-y): "artisan hand-thrown ceramic pour-over dripper gift set", "best luxury organic body oil premium gift box 2024"
 - Respect avoidCategories and constraints — never generate queries for excluded items.
-- When clarification is NOT null, set searchQueries to null (queries will be generated on the next request with more context).
 - Return ONLY the JSON object, no markdown fencing, no explanation.`;
 
-export async function generateTasteProfile(description) {
+export async function generateProfileAndQueries(description) {
   const response = await openai.chat.completions.create({
     model: MODEL,
     messages: [
@@ -92,7 +74,7 @@ export async function generateTasteProfile(description) {
       { role: 'user', content: description },
     ],
     temperature: 0.3,
-    max_tokens: 1700,
+    max_tokens: 1900,
   });
 
   const content = response.choices[0].message.content.trim();

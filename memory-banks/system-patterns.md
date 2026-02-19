@@ -41,7 +41,7 @@ ForHer.AI/
 │       ├── utils.js            # cn() utility (clsx + tailwind-merge)
 │       ├── openai.js           # OpenAI client singleton + MODEL constant
 │       ├── mongoose.js         # MongoDB connection singleton (cached, targets serper-queries DB)
-│       ├── taste-profile.js    # generateTasteProfile() — LLM taste extraction + query generation
+│       ├── taste-profile.js    # generateProfileAndQueries() — LLM taste extraction + query generation (always returns searchQueries)
 │       ├── pipeline.js         # runPipeline() — orchestrates full product discovery pipeline
 │       ├── search-scrapingdog.js  # executeScrapingDogQueries() — ScrapingDog Shopping API + MongoDB cache
 │       ├── search-amazon.js    # executeAmazonQueries() — ScrapingDog Amazon Search API + MongoDB cache + affiliate tagging
@@ -76,14 +76,21 @@ ForHer.AI/
 The main page uses a `phase` state to switch between five views:
 - `'input'` — Text area for describing the recipient
 - `'thinking'` — Loading animation while generating taste profile or fetching recommendations
-- `'clarifying'` — Follow-up question with 3 pill options (only shown when description is vague)
+- `'clarifying'` — Budget question with 3 pill options (client-side regex detection, shown instantly when no budget mentioned)
 - `'populating'` — Skeleton cards while recommendations load (messages stop cycling after "Almost there...")
 - `'results'` — Gift card grid with personalized heading
 
+**Budget Detection & Parallel Prefetch:**
+- `hasBudgetMention(text)` regex detects budget keywords in user input client-side
+- If no budget detected: budget pills appear instantly (`BUDGET_CLARIFICATION` static object), taste profile API runs in background (`profilePromiseRef`)
+- If budget present: goes straight to thinking phase, awaits profile, then fetches recommendations
+- When user picks a budget option: awaits the in-flight profile promise, patches budget in, proceeds to recommendations
+- No LLM clarification — the LLM always returns a complete profile + 3 search queries
+
 **API Communication (Two-step flow):**
 1. Client POSTs `{ description }` to `/api/taste-profile`
-   - Server returns `{ tasteProfile: {...} }` — includes `clarification` field (question + 3 options with patches) or `clarification: null`
-2. If clarification needed: client shows question, user selects option, taste profile is patched client-side
+   - Server returns `{ tasteProfile: {...} }` — always includes `searchQueries` (3 queries), never returns clarification
+2. If budget missing: client shows budget pills (instant, no API wait), taste profile fetches in parallel
 3. Client POSTs `{ tasteProfile }` to `/api/recommendations` (pre-built profile, skips re-generation)
    - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
 - Taste profile + search queries generated via a single OpenAI call from the free-text description

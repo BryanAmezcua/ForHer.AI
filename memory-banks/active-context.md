@@ -1,7 +1,7 @@
 ## Current state of development
 
 ### Current Focus
-**Session Persistence & Shareable URLs implemented.** Recommendation sessions are saved to MongoDB (7-day TTL) with shareable URLs at `/s/[id]`. Share button in results nav bar copies URL to clipboard. Shared view is a server component with dynamic OG tags. Next: deploy and verify live.
+**Instant budget detection + LLM clarification removal.** Budget is now detected client-side via regex before any API call. If missing, budget pills appear instantly while the taste profile LLM call runs in the background. The LLM no longer returns a `clarification` field — it always generates a complete profile + 3 search queries in a single call, eliminating the separate `generateDeepQueries` fallback.
 
 ### What's Working
 - Landing page renders with five-phase UI (input → thinking → clarifying → populating → results)
@@ -9,8 +9,9 @@
 - Soft prompt hints ("What does she light up about?", etc.)
 - Submit sends POST to `/api/taste-profile` first, then `/api/recommendations`
 - Thinking state with multi-step progress indicator (stops cycling after "Almost there...")
-- Clarification phase: LLM-generated follow-up question with 3 pill options (only when description is vague)
+- Clarification phase: instant budget question with 3 pill options (client-side regex detection, no LLM involvement)
 - Client-side taste profile patching from clarification answers
+- Budget prefetch: taste profile API call runs in background while user picks budget
 - Results page displays gift cards in responsive grid (1-col mobile, 2-col tablet, 3-col desktop)
 - Top pick card visually ranked: enhanced copper border/glow with ring accent
 - Card hover state: subtle lift (-translate-y-1) + shadow increase
@@ -28,7 +29,7 @@
 - Fade-up and staggered card animations
 - PDP confidence scoring rejects category/editorial/collection pages after ScrapingDog enrichment
 - Gift-set/bundle title filter rejects gift sets, gift boxes, sampler sets, etc. during pruning
-- **Dual-source product pipeline:** taste profile + query generation (single LLM call) → 2 Amazon queries + 1 Google Shopping query (parallel) → dedup → prune → enrich (only Google products via Immersive Product, Amazon skips) + pills + reaction lines (parallel) → PDP scoring → top 9 display
+- **Dual-source product pipeline:** taste profile + query generation (single LLM call, always generates 3 queries) → 2 Amazon queries + 1 Google Shopping query (parallel) → dedup → prune → enrich (only Google products via Immersive Product, Amazon skips) + pills + reaction lines (parallel) → PDP scoring → top 9 display
 - ScrapingDog enrichment provides real merchant URLs via store selection (Google products only)
 - Amazon products pass through enrichment fallback preserving rich search data (ratings, reviews, extensions, merchantName = "Amazon")
 - Two-tier pill system: LLM gift-fit pills + merchant badges (Free Shipping, Free Returns, X-Day Returns, Prime, Best Seller, Amazon's Choice)
@@ -59,13 +60,9 @@
 5. Wire up "Adjust Preferences" button
 
 ### Recent Changes
+- **Instant budget detection + LLM clarification removal** — Budget detected client-side via regex (`hasBudgetMention()`). Missing budget → budget pills appear instantly, taste profile API runs in background (`profilePromiseRef`). LLM prompt no longer has `clarification` field or clarification rules — always generates complete profile + 3 `searchQueries`. `generateTasteProfile` renamed to `generateProfileAndQueries`. `max_tokens` bumped 1700 → 1900. Eliminates `generateDeepQueries` fallback (queries always present).
 - **Session persistence & shareable URLs** — Recommendation sessions saved to MongoDB `sessions` collection (7-day TTL). 10-char hex session IDs. Fire-and-forget save after pipeline. `SessionResults` component extracted from `page.js`. Share button in nav bar copies `/s/[id]` URL. Server component at `/s/[id]` with dynamic OG tags. Custom 404 for expired/invalid sessions.
 - **Amazon product integration** — ScrapingDog Amazon Search API as second product source. Query split: 2 Amazon + 1 Google Shopping (was 3 Google). Amazon products carry rich data (Prime, Best Seller, Amazon's Choice, social proof, reviews). Affiliate tag `giftherai-20` appended to all Amazon URLs. Sponsored results filtered out.
-- **Title cleaning** — New `clean-title.js` utility strips e-commerce junk from product titles (ALL-CAPS brands, trailing recipients, sizes, brand suffixes). Truncates to ~60 chars at word boundary.
-- **Amazon badge on frontend** — Orange `#FF9900` ProfilePill with "Amazon" label when `sourceTag === 'amazon'`. Social proof text rendered below rating.
-- **Favicon + OG image** — Copper sparkle favicon (SVG), apple-touch-icon, and OpenGraph image for link previews.
-- **Enrichment fallback for Amazon** — `buildFallback()` preserves Amazon's rich search data (rating, reviews, extensions, merchantName = "Amazon") instead of nulling them out.
-- **API contract updated** — New fields: `sourceTag` (String|null), `socialProof` (String|null). New merchant badge values: "Prime", "Best Seller", "Amazon's Choice".
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI for all LLM calls (model configured in `src/lib/openai.js`)

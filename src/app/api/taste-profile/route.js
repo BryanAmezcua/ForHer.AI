@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateTasteProfile } from '@/lib/taste-profile';
+import { generateProfileAndQueries } from '@/lib/taste-profile';
 
 export async function POST(request) {
   const { description } = await request.json();
@@ -12,7 +12,7 @@ export async function POST(request) {
   }
 
   try {
-    const tasteProfile = await generateTasteProfile(description);
+    const tasteProfile = await generateProfileAndQueries(description);
     return NextResponse.json({ tasteProfile });
   } catch (err) {
     console.error('Taste profile generation failed:', err.message);
