@@ -15,6 +15,15 @@ export function ProductImage({ src, imageUrls, alt, fallbackColor }) {
 /* ── Single image (original behavior) ── */
 function SingleImage({ src, alt, fallbackColor }) {
   const [status, setStatus] = useState('loading');
+  const imgRef = useRef(null);
+
+  // Handle images already loaded before hydration
+  useEffect(() => {
+    const img = imgRef.current;
+    if (img && img.complete && img.naturalWidth > 0) {
+      setStatus('loaded');
+    }
+  }, []);
 
   return (
     <div
@@ -23,6 +32,7 @@ function SingleImage({ src, alt, fallbackColor }) {
     >
       {src && status !== 'error' && (
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
@@ -53,6 +63,20 @@ function Gallery({ images, alt, fallbackColor }) {
   const [loadedSet, setLoadedSet] = useState(new Set());
   const [errorSet, setErrorSet] = useState(new Set());
   const [isHovered, setIsHovered] = useState(false);
+  const imgRefs = useRef([]);
+
+  // Handle images already loaded before hydration
+  useEffect(() => {
+    imgRefs.current.forEach((img, idx) => {
+      if (img && img.complete && img.naturalWidth > 0) {
+        setLoadedSet(prev => {
+          const next = new Set(prev);
+          next.add(idx);
+          return next;
+        });
+      }
+    });
+  }, []);
 
   // Touch handling
   const touchStartX = useRef(null);
@@ -139,6 +163,7 @@ function Gallery({ images, alt, fallbackColor }) {
           <div key={idx} className="w-full h-full flex-shrink-0 relative">
             {url && !errorSet.has(idx) && (
               <img
+                ref={el => imgRefs.current[idx] = el}
                 src={url}
                 alt={`${alt} — image ${idx + 1}`}
                 className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
