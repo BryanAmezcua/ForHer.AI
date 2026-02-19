@@ -13,7 +13,6 @@ All project context lives in `memory-banks/`. **Read the relevant file(s) before
 | `active-context.md` | What's working, what's broken, current TODOs, open questions |
 | `progress.md` | Checklists, phase status, git history |
 | `cost-analysis.md` | API costs, per-request budgets, monthly capacity |
-| `api-contract.md` | Shared frontend/backend interface, response schemas |
 
 ## Rules
 

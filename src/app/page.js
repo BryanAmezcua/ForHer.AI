@@ -3,9 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { RichSummary } from '@/components/RichSummary';
-import { GiftCard } from '@/components/GiftCard';
 import { GiftCardSkeleton } from '@/components/GiftCardSkeleton';
+import { SessionResults } from '@/components/SessionResults';
 
 const PLACEHOLDER_EXAMPLES = [
   "My mom loves gardening and hates clutter. Her birthday is next week...",
@@ -87,6 +86,7 @@ export default function Home() {
   const [clarification, setClarification] = useState(null);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [populatingMsgIndex, setPopulatingMsgIndex] = useState(0);
+  const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState(null);
   const textareaRef = useRef(null);
   const abortRef = useRef(null);
@@ -143,6 +143,10 @@ export default function Home() {
       setRecommendations(data.recommendations);
       setMeta(data.meta);
       setTasteProfile(data.tasteProfile);
+      if (data.sessionId) {
+        setSessionId(data.sessionId);
+        window.history.replaceState(null, '', '/s/' + data.sessionId);
+      }
       setPhase('results');
     } catch (err) {
       clearTimeout(skeletonTimer);
@@ -205,8 +209,10 @@ export default function Home() {
     setMeta(null);
     setTasteProfile(null);
     setClarification(null);
+    setSessionId(null);
     setError(null);
     setPhase('input');
+    window.history.replaceState(null, '', '/');
     setTimeout(() => textareaRef.current?.focus(), 100);
   };
 
@@ -494,64 +500,13 @@ export default function Home() {
 
         {/* ==================== RESULTS PHASE ==================== */}
         {phase === 'results' && (
-          <div className="animate-fade-up">
-            {/* ── Nav bar ── */}
-            <nav className="max-w-[1100px] mx-auto flex items-center justify-between px-4 sm:px-6 py-4 border-b border-border/50">
-              <button
-                onClick={handleStartOver}
-                className="flex items-center gap-2 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer min-w-[44px] min-h-[44px]"
-              >
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="opacity-60">
-                  <path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className="hidden sm:inline">New Search</span>
-              </button>
-              <span className="text-[11px] uppercase tracking-[0.25em] font-semibold text-muted-foreground">
-                GiftHer.ai
-              </span>
-              <span className="w-4" />
-            </nav>
-
-            {/* ── Main content ── */}
-            <div className="max-w-[1000px] mx-auto px-4 sm:px-6 pt-10 pb-16">
-              {/* Personalized heading */}
-              <div className="text-center mb-12">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground mb-3 font-semibold">
-                  Personalized Selection
-                </p>
-                <h2 className="text-2xl sm:text-[2.2rem] font-bold text-foreground tracking-tight leading-tight mb-4">
-                  Curated for {meta?.curatedFor || 'her'}
-                </h2>
-                <RichSummary text={meta?.summary} />
-              </div>
-
-              {/* ── Product cards ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
-                {recommendations.map((gift, i) => (
-                  <GiftCard key={i} gift={gift} index={i} isTopPick={i === 0} />
-                ))}
-              </div>
-
-              {/* ── Bottom refinement section ── */}
-              {/* <div className="bg-[#f0ebe5]/60 rounded-2xl p-8 sm:p-10 text-center max-w-[740px] mx-auto">
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  Not quite what you were looking for?
-                </h3>
-                <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">
-                  We can refine these results by learning more about her specific aesthetic
-                  preferences or the occasion you&apos;re celebrating.
-                </p>
-                <div className="flex gap-3 justify-center flex-wrap">
-                  <Button
-                    variant="outline"
-                    className="text-stone-soft border-border bg-white/60 hover:bg-white rounded-xl px-6 py-5 font-semibold text-sm cursor-pointer"
-                  >
-                    Adjust Preferences
-                  </Button>
-                </div>
-              </div> */}
-            </div>
-          </div>
+          <SessionResults
+            recommendations={recommendations}
+            meta={meta}
+            sessionId={sessionId}
+            isShared={false}
+            onStartOver={handleStartOver}
+          />
         )}
       </div>
     </main>

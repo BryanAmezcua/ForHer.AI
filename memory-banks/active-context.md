@@ -1,7 +1,7 @@
 ## Current state of development
 
 ### Current Focus
-**Phase 1.5 — Amazon Integration Complete.** App is live at gifther.ai. Amazon product source integrated with affiliate links. Next focus: testing live, verifying credit savings, then Phase 2 refinement loop.
+**Session Persistence & Shareable URLs implemented.** Recommendation sessions are saved to MongoDB (7-day TTL) with shareable URLs at `/s/[id]`. Share button in results nav bar copies URL to clipboard. Shared view is a server component with dynamic OG tags. Next: deploy and verify live.
 
 ### What's Working
 - Landing page renders with five-phase UI (input → thinking → clarifying → populating → results)
@@ -19,7 +19,10 @@
 - Pipeline over-fetches 16 products (enrichment pool), then PDP confidence scoring filters non-product pages, slices to 9 for display
 - Product image component with loading/error fallback states and multi-image gallery
 - Rich summary text with **bold** marker parsing
-- Nav bar in results view with "New Search" back button
+- Nav bar in results view with "New Search" back button and "Share" button (copies URL to clipboard)
+- Session persistence: results saved to MongoDB with 7-day TTL, shareable via `/s/[id]` URLs
+- Shared session view: server component with dynamic OG tags, custom 404 for expired/invalid sessions
+- URL updates to `/s/[id]` after results load via `history.replaceState`
 - "Start over" functionality resets all state including clarification
 - Custom "Whiskey Lounge" color scheme applied via CSS variables
 - Fade-up and staggered card animations
@@ -56,6 +59,7 @@
 5. Wire up "Adjust Preferences" button
 
 ### Recent Changes
+- **Session persistence & shareable URLs** — Recommendation sessions saved to MongoDB `sessions` collection (7-day TTL). 10-char hex session IDs. Fire-and-forget save after pipeline. `SessionResults` component extracted from `page.js`. Share button in nav bar copies `/s/[id]` URL. Server component at `/s/[id]` with dynamic OG tags. Custom 404 for expired/invalid sessions.
 - **Amazon product integration** — ScrapingDog Amazon Search API as second product source. Query split: 2 Amazon + 1 Google Shopping (was 3 Google). Amazon products carry rich data (Prime, Best Seller, Amazon's Choice, social proof, reviews). Affiliate tag `giftherai-20` appended to all Amazon URLs. Sponsored results filtered out.
 - **Title cleaning** — New `clean-title.js` utility strips e-commerce junk from product titles (ALL-CAPS brands, trailing recipients, sizes, brand suffixes). Truncates to ~60 chars at word boundary.
 - **Amazon badge on frontend** — Orange `#FF9900` ProfilePill with "Amazon" label when `sourceTag === 'amazon'`. Social proof text rendered below rating.

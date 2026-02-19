@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { runPipeline } from '@/lib/pipeline';
+import { saveSession } from '@/lib/models/session';
 
 export async function POST(request) {
   const { description, tasteProfile } = await request.json();
@@ -13,7 +14,8 @@ export async function POST(request) {
 
   try {
     const result = await runPipeline({ description, tasteProfile });
-    return NextResponse.json(result);
+    const sessionId = saveSession(result);
+    return NextResponse.json({ ...result, sessionId });
   } catch (err) {
     console.error('Recommendation generation failed:', err.message);
     return NextResponse.json(

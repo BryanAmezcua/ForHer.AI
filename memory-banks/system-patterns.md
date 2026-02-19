@@ -17,12 +17,17 @@ ForHer.AI/
 │   │   ├── page.js            # Main landing page (client component)
 │   │   ├── layout.js          # Root layout with Manrope font
 │   │   ├── globals.css         # Tailwind + CSS variables + animations
+│   │   ├── s/
+│   │   │   └── [id]/
+│   │   │       ├── page.js         # Shared session view (server component)
+│   │   │       └── not-found.js    # Custom 404 for expired/invalid sessions
 │   │   └── api/
 │   │       ├── taste-profile/
 │   │       │   └── route.js    # POST endpoint for taste profile + clarification
 │   │       └── recommendations/
 │   │           └── route.js    # POST endpoint for gift recommendations
 │   ├── components/
+│   │   ├── SessionResults.jsx   # Reusable results view (used by / and /s/[id])
 │   │   ├── ProfilePill.jsx     # Taste-profile pill (category-colored capsule)
 │   │   ├── ProductImage.jsx    # Product image with loading/error fallback + gallery
 │   │   ├── RichSummary.jsx     # Renders summary text with **bold** markers
@@ -51,7 +56,8 @@ ForHer.AI/
 │       ├── parse-price.js      # Price string parsing utility
 │       ├── strip-markdown.js   # Markdown stripping utility
 │       └── models/
-│           └── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
+│           ├── shopping-cache.js # ShoppingCache Mongoose model (TTL-indexed cache)
+│           └── session.js        # Session model (shareable recommendation sessions, 7-day TTL)
 ├── public/
 │   └── icon.svg                # Copper sparkle favicon (SVG)
 ├── memory-banks/               # Context tracking files
@@ -136,6 +142,17 @@ The main page uses a `phase` state to switch between five views:
 - Connection: `src/lib/mongoose.js` — cached singleton, cluster `cached-data`, database `GiftHer`
 - Model: `src/lib/models/shopping-cache.js` — collection `products`
 - TTL index on `expiresAt` — MongoDB auto-deletes expired documents
+
+**Session Persistence (MongoDB):**
+- Model: `src/lib/models/session.js` — collection `sessions`
+- Schema: `_id` (10-char hex string), `recommendations` (Mixed), `meta` ({ curatedFor, summary }), `tasteProfile` (Mixed), `createdAt` (Date), `expiresAt` (Date, TTL index)
+- 7-day TTL — MongoDB auto-deletes expired sessions
+- Session ID generated via `crypto.randomUUID()` (first 10 hex chars)
+- Saved fire-and-forget after pipeline completes (no await, `.catch()` logs errors)
+- Shared view at `/s/[id]` — server component loads session from DB, renders `SessionResults`
+- Share button copies URL to clipboard with "Copied!" feedback
+- On main page, URL updates to `/s/[id]` via `history.replaceState` after results load
+- Graceful degradation: if save fails, user still gets results (just no shareable URL)
 
 **Recommendation Card Schema:**
 Each recommendation object contains:

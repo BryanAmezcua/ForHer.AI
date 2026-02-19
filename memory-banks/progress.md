@@ -66,6 +66,18 @@
 - [ ] Monitor credit savings (~70 credits/request vs. 110)
 - [ ] Affiliate revenue tracking
 
+### Session Persistence & Shareable URLs (Complete)
+- [x] Session Mongoose model (`src/lib/models/session.js`) with 7-day TTL
+- [x] Session saving in recommendations route (fire-and-forget)
+- [x] `sessionId` returned in API response
+- [x] `SessionResults` component extracted from `page.js`
+- [x] Share button in nav bar (copies URL to clipboard with "Copied!" feedback)
+- [x] URL updates to `/s/[id]` via `history.replaceState` after results load
+- [x] Shared session route (`/s/[id]`) — server component with dynamic OG tags
+- [x] Custom 404 for expired/invalid sessions
+- [x] "New Search" resets URL back to `/`
+- [ ] Verify live in production
+
 ### Phase 2 — Not Started
 - [ ] Reject a pick and say why
 - [ ] System returns alternatives informed by rejection
