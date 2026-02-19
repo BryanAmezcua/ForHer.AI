@@ -15,10 +15,25 @@ const PLACEHOLDER_EXAMPLES = [
   "She's my best friend, turning 30. Into yoga, travel, and anything matcha. Budget flexible...",
 ];
 
-const SOFT_PROMPTS = [
-  "What does she light up about?",
-  "What would she never buy for herself?",
-  "What's the occasion?",
+const PERSONA_PRESETS = [
+  {
+    label: "Her birthday's coming up",
+    prefill: "It's my sister's birthday. She's into working out, knitting, and cycling. She's in her late 20s and loves anything cozy or practical.",
+  },
+  {
+    label: "Something for Mom",
+    prefill: "I want to get my mom something special. She loves gardening, cooking Italian food, and reading mystery novels. She always says she doesn't need anything.",
+  },
+  {
+    label: "For my girlfriend",
+    prefill: "Looking for a gift for my girlfriend. She's into skincare, yoga, and coffee. She appreciates thoughtful, aesthetic things over flashy ones.",
+  },
+];
+
+const BUDGET_PRESETS = [
+  { label: "Under $50", append: " I'd like to keep it under $50." },
+  { label: "$50\u2013$100", append: " My budget is around $50 to $100." },
+  { label: "Over $100", append: " I'm willing to spend over $100 for the right gift." },
 ];
 
 const THINKING_STEPS = [
@@ -65,6 +80,7 @@ export default function Home() {
   const [input, setInput] = useState('');
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [phase, setPhase] = useState('input');
+  const [presetStep, setPresetStep] = useState('persona'); // 'persona' | 'budget' | 'done'
   const [recommendations, setRecommendations] = useState([]);
   const [meta, setMeta] = useState(null);
   const [tasteProfile, setTasteProfile] = useState(null);
@@ -184,6 +200,7 @@ export default function Home() {
   const handleStartOver = () => {
     if (abortRef.current) abortRef.current.abort();
     setInput('');
+    setPresetStep('persona');
     setRecommendations([]);
     setMeta(null);
     setTasteProfile(null);
@@ -228,32 +245,61 @@ export default function Home() {
 
             <section className="text-center animate-fade-up relative" style={{ animationDelay: '0.2s' }}>
               <h2 className="text-xl sm:text-[1.6rem] font-semibold text-foreground mb-2">
-                Tell us about her.
+                Curated gifts for her.
               </h2>
-              <p className="text-sm text-muted-foreground mb-8">
-                As little or as much as you&apos;d like &mdash; we&apos;ll take it from here.
+              <p className="text-xs sm:text-sm text-muted-foreground mb-8">
+                Tell us as little or as much as you&apos;d like &mdash; we&apos;ll take it from here.
               </p>
 
               <Textarea
                 ref={textareaRef}
                 value={input}
-                onChange={(e) => setInput(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setInput(val);
+                  if (!val.trim()) setPresetStep('persona');
+                }}
                 onKeyDown={handleKeyDown}
                 placeholder={PLACEHOLDER_EXAMPLES[placeholderIndex]}
                 rows={5}
                 className="w-full min-h-[140px] bg-white/[0.05] border-[1.5px] border-border rounded-2xl px-6 py-5 text-base leading-relaxed text-foreground placeholder:text-warm-gray/60 placeholder:transition-opacity placeholder:duration-400 focus:placeholder:opacity-40 focus-visible:border-copper focus-visible:ring-copper/30 shadow-[0_2px_20px_rgba(0,0,0,0.3)] resize-y transition-all duration-300 mb-4"
               />
 
-              <div className="flex gap-3 justify-center flex-wrap mb-8">
-                {SOFT_PROMPTS.map((p, i) => (
-                  <span
-                    key={i}
-                    className="text-xs text-warm-gray bg-white/[0.06] px-3.5 py-1.5 rounded-full border border-border"
-                  >
-                    {p}
-                  </span>
-                ))}
-              </div>
+              {presetStep === 'persona' && (
+                <div className="flex gap-3 justify-center flex-wrap mb-8">
+                  {PERSONA_PRESETS.map((preset, i) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        setInput(preset.prefill);
+                        setPresetStep('budget');
+                      }}
+                      className="text-sm text-warm-gray bg-white/[0.06] px-4 py-2 rounded-full border border-border/60 cursor-pointer hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 animate-fade-up"
+                      style={{ animationDelay: `${0.3 + i * 0.08}s` }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {presetStep === 'budget' && (
+                <div className="flex gap-3 justify-center flex-wrap mb-8">
+                  {BUDGET_PRESETS.map((preset, i) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        setInput(prev => prev + preset.append);
+                        setPresetStep('done');
+                      }}
+                      className="text-sm text-warm-gray bg-white/[0.06] px-4 py-2 rounded-full border border-border/60 cursor-pointer hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 animate-fade-up"
+                      style={{ animationDelay: `${i * 0.08}s` }}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <Button
                 onClick={handleSubmit}
@@ -263,7 +309,7 @@ export default function Home() {
                 Find her something wonderful
               </Button>
 
-              <p className="text-xs text-muted-foreground/60 mt-5 tracking-wide">
+              <p className="text-xs text-muted-foreground/80 mt-5 tracking-wide">
                 No sign-up. No spam. Just a good gift.
               </p>
             </section>
