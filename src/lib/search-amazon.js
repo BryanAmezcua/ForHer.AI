@@ -160,9 +160,7 @@ async function executeOneQuery(rawQuery) {
   }
 
   const data = await response.json();
-  const results = (data.results || [])
-    .filter(item => !item.sponsored)
-    .map(normalizeAmazonItem);
+  const results = (data.results || []).map(normalizeAmazonItem);
 
   debugLog(`  [API] Amazon "${rawQuery}" → ${results.length} results`);
 

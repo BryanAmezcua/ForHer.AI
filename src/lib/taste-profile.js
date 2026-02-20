@@ -62,9 +62,9 @@ Search query rules:
 - Generate exactly 5 gift-oriented Amazon search queries. Frame every query around gift discovery, NOT raw supplies or equipment.
 - Each query should explore a DIFFERENT angle/interest from the profile.
 - Keep queries under 8 words when possible. Use simple, everyday language.
-- Always lead with gift intent: "gifts for", "gift for", "best gifts for", "unique gifts for", "top gifts for".
-- Connect the recipient relationship + interest: "gifts for [relationship] who loves [interest]"
-- Good: "gifts for girlfriend who loves cooking", "best gifts for mom who likes gardening", "unique gifts for wife who loves yoga", "top gifts for her self care", "cozy gifts for homebody girlfriend"
+- Use "top", "top rated", or "best" to lead queries — these surface popular, well-reviewed products on Amazon.
+- Connect the recipient relationship + interest: "top gifts for [relationship] who loves [interest]"
+- Good: "top gifts for girlfriend who loves cooking", "best gifts for mom who likes gardening", "top rated yoga gifts for wife", "top gifts for her self care", "best cozy gifts for homebody girlfriend"
 - Bad (raw supplies, not gifts): "knitting supplies for women", "workout gear for girlfriend", "baking tools kitchen"
 - Bad (too specific/SEO-y): "artisan hand-thrown ceramic pour-over dripper gift set", "best luxury organic body oil premium gift box 2024"
 - Respect avoidCategories and constraints — never generate queries for excluded items.
