@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/mongoose';
 
 const sessionSchema = new mongoose.Schema({
   _id: { type: String },
+  description: { type: String },
   rows: { type: mongoose.Schema.Types.Mixed, required: true },
   meta: {
     curatedFor: { type: String },
@@ -18,12 +19,13 @@ export const Session =
   mongoose.models.Session ||
   mongoose.model('Session', sessionSchema, 'sessions');
 
-export function saveSession(result) {
+export function saveSession(result, description) {
   const sessionId = crypto.randomUUID().replace(/-/g, '').slice(0, 10);
 
   connectDB()
     .then(() => Session.create({
       _id: sessionId,
+      description: description || null,
       rows: result.rows,
       meta: result.meta,
       tasteProfile: result.tasteProfile,

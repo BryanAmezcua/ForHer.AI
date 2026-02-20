@@ -14,7 +14,7 @@ export async function POST(request) {
 
   try {
     const result = await runPipeline({ description, tasteProfile });
-    const sessionId = saveSession(result);
+    const sessionId = saveSession(result, description);
     return NextResponse.json({ ...result, sessionId });
   } catch (err) {
     console.error('Recommendation generation failed:', err.message);
