@@ -18,6 +18,7 @@ export async function generateMetadata({ params }) {
   return {
     title: `Gifts for ${curatedFor} — GiftHer.ai`,
     description: session.meta?.summary || `A curated gift list for ${curatedFor}`,
+    robots: { index: false, follow: false },
     openGraph: {
       title: `Gifts for ${curatedFor} — GiftHer.ai`,
       description: session.meta?.summary || `A curated gift list for ${curatedFor}`,

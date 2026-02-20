@@ -150,18 +150,16 @@ export function GiftCard({ gift, index, isTopPick }) {
           <div className="mb-auto" />
         )}
 
-        {/* CTA button */}
-        <button
-          className="w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold cta-hover active:scale-[0.98] cursor-pointer"
+        {/* CTA link */}
+        <a
+          href={gift.url && gift.url !== '#' ? gift.url : undefined}
+          target="_blank"
+          rel="noopener noreferrer sponsored"
+          className="block w-full mt-5 py-3 rounded-xl text-white text-sm font-semibold text-center cta-hover active:scale-[0.98] cursor-pointer"
           style={{ backgroundColor: gift.ctaColor }}
-          onClick={() => {
-            if (gift.url && gift.url !== '#') {
-              window.open(gift.url, '_blank', 'noopener');
-            }
-          }}
         >
           {gift.ctaText}
-        </button>
+        </a>
       </div>
     </div>
   );
