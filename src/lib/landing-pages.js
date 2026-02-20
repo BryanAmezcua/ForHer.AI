@@ -18,28 +18,25 @@ export const LANDING_PAGES = {
       recipient: { name: null, relationship: 'girlfriend', age: null, lifestage: 'young professional' },
       occasion: { event: null, urgency: null },
       budget: { min: 25, max: 150, flexibility: 'flexible' },
-      interests: ['skincare', 'cozy nights in', 'coffee'],
-      interestAliases: {
-        skincare: ['moisturizer', 'serum', 'face mask', 'cleanser', 'beauty', 'glow', 'spa', 'self-care', 'hydrating', 'vitamin c'],
-        'cozy nights in': ['blanket', 'candle', 'throw', 'loungewear', 'pajamas', 'slippers', 'cozy', 'plush', 'warm', 'fleece'],
-        coffee: ['espresso', 'latte', 'pour-over', 'mug', 'grinder', 'cold brew', 'barista', 'french press', 'coffee lover', 'drip'],
-      },
-      aesthetic: { style: ['aesthetic', 'minimalist', 'thoughtful'], avoids: [] },
+      interests: ['skincare', 'home decor', 'coffee'],
+      aesthetic: { style: ['minimalist', 'modern', 'thoughtful'], avoids: [] },
       personality: { traits: ['appreciative', 'stylish'], giftReceivingStyle: 'appreciates anything' },
       constraints: [],
       giftingContext: { previousGifts: [], avoidCategories: [], leanToward: null },
       searchQueries: [
-        { q: 'top gifts for girlfriend who loves skincare', interest: 'skincare' },
-        { q: 'best cozy gift sets for girlfriend', interest: 'cozy nights in' },
-        { q: 'top rated coffee lover gifts for her', interest: 'coffee' },
+        { q: 'best selling skincare sets women', interest: 'skincare', strategy: 'direct' },
+        { q: 'top rated throw blankets women', interest: 'home decor', strategy: 'direct' },
+        { q: 'best coffee accessories women', interest: 'coffee', strategy: 'direct' },
+        { q: 'luxury candles for her', interest: 'home decor', strategy: 'direct' },
+        { q: 'premium silk sleep mask women', interest: 'skincare', strategy: 'adjacent' },
       ],
-      summary: 'Thoughtful, aesthetic picks your girlfriend will actually love — from skincare to cozy essentials.',
+      summary: 'Thoughtful picks your girlfriend will actually love — from skincare to home decor and coffee.',
     },
     faq: [
       {
         question: 'What are the best gifts for a girlfriend who has everything?',
         answer:
-          'Focus on experiences and consumables — luxury skincare sets, artisan coffee subscriptions, or cozy self-care bundles. The best gifts for a girlfriend who has everything are things she wouldn\u2019t buy herself.',
+          'Focus on experiences and consumables — luxury skincare sets, specialty coffee subscriptions, or self-care bundles. The best gifts for a girlfriend who has everything are things she won\u2019t buy herself.',
       },
       {
         question: 'How much should I spend on a gift for my girlfriend?',
@@ -49,12 +46,12 @@ export const LANDING_PAGES = {
       {
         question: 'What are thoughtful gift ideas for my girlfriend?',
         answer:
-          'Thoughtful gifts show you pay attention — a book by her favorite author, skincare from a brand she mentioned, or a cozy throw in her favorite color. GiftHer.ai matches gifts to her actual interests so every pick feels personal.',
+          'Thoughtful gifts show you pay attention — a book by her favorite author, skincare from a brand she mentioned, or a throw blanket in her favorite color. GiftHer.ai matches gifts to her actual interests so every pick feels personal.',
       },
       {
         question: 'What do girlfriends actually want as gifts?',
         answer:
-          'Most girlfriends appreciate gifts that show effort and attention to detail. Popular categories include skincare, cozy home items, jewelry, and specialty food and drink sets. Skip the generic and go personal.',
+          'Most girlfriends appreciate gifts that show effort and attention to detail. Popular categories include skincare, home items, jewelry, and specialty food and drink sets. Skip the generic and go personal.',
       },
     ],
     cta: 'My girlfriend loves ',
@@ -75,19 +72,16 @@ export const LANDING_PAGES = {
       occasion: { event: null, urgency: null },
       budget: { min: 25, max: 120, flexibility: 'flexible' },
       interests: ['gardening', 'cooking', 'reading'],
-      interestAliases: {
-        gardening: ['planter', 'seeds', 'garden tools', 'herb', 'succulent', 'botanical', 'plant', 'flower', 'watering', 'greenhouse'],
-        cooking: ['kitchen', 'cookbook', 'spice', 'olive oil', 'utensil', 'apron', 'baking', 'recipe', 'gourmet', 'chef'],
-        reading: ['book', 'novel', 'reading light', 'bookmark', 'kindle', 'book lover', 'literary', 'cozy reading', 'page turner', 'library'],
-      },
       aesthetic: { style: ['classic', 'warm', 'practical'], avoids: ['clutter'] },
       personality: { traits: ['selfless', 'practical', 'nurturing'], giftReceivingStyle: 'hard to shop for' },
       constraints: [],
       giftingContext: { previousGifts: [], avoidCategories: [], leanToward: 'indulgent' },
       searchQueries: [
-        { q: 'best gifts for mom who loves gardening', interest: 'gardening' },
-        { q: 'top cooking gifts for mom', interest: 'cooking' },
-        { q: 'top rated gifts for mom who loves reading', interest: 'reading' },
+        { q: 'best garden tools set women', interest: 'gardening', strategy: 'direct' },
+        { q: 'top rated cookbook best sellers', interest: 'cooking', strategy: 'direct' },
+        { q: 'best women reading accessories', interest: 'reading', strategy: 'direct' },
+        { q: 'luxury kitchen accessories women', interest: 'cooking', strategy: 'direct' },
+        { q: 'premium indoor herb garden kit', interest: 'gardening', strategy: 'adjacent' },
       ],
       summary: 'Curated picks for the mom who says she doesn\u2019t need anything — from garden finds to kitchen treasures.',
     },
@@ -95,7 +89,7 @@ export const LANDING_PAGES = {
       {
         question: 'What are the best gifts for a mom who says she doesn\u2019t want anything?',
         answer:
-          'The trick is to gift her something indulgent she\u2019d never buy herself. Think luxury hand cream, a beautiful planter, a gourmet spice set, or a cozy reading blanket. Moms appreciate the thought behind the gift most.',
+          'The trick is to gift her something indulgent she\u2019d never buy herself. Think luxury hand cream, a ceramic planter, a gourmet spice set, or a soft reading blanket. Moms appreciate the thought behind the gift most.',
       },
       {
         question: 'What is a good budget for a gift for Mom?',
@@ -105,12 +99,12 @@ export const LANDING_PAGES = {
       {
         question: 'What are unique gift ideas for Mom?',
         answer:
-          'Go beyond flowers and candles. An indoor herb garden kit, an artisan cookbook from her favorite cuisine, or a personalized reading light are all unique options. GiftHer.ai finds gifts matched to her specific hobbies.',
+          'Go beyond flowers and candles. An indoor herb garden kit, a popular cookbook from her favorite cuisine, or a personalized reading light are all unique options. GiftHer.ai finds gifts matched to her specific hobbies.',
       },
       {
         question: 'What do moms really want for their birthday?',
         answer:
-          'Most moms want to feel seen. Gifts that connect to their hobbies — a beautiful garden tool set, a new cookbook, a cozy throw — show you pay attention. A heartfelt note doesn\u2019t hurt either.',
+          'Most moms want to feel seen. Gifts that connect to their hobbies — a quality garden tool set, a new cookbook, a soft throw — show you pay attention. A heartfelt note doesn\u2019t hurt either.',
       },
     ],
     cta: 'My mom loves ',
@@ -131,19 +125,16 @@ export const LANDING_PAGES = {
       occasion: { event: null, urgency: null },
       budget: { min: 40, max: 200, flexibility: 'flexible' },
       interests: ['wellness', 'jewelry', 'home decor'],
-      interestAliases: {
-        wellness: ['spa', 'aromatherapy', 'essential oil', 'bath bomb', 'relaxation', 'meditation', 'yoga', 'self-care', 'massage', 'mindfulness'],
-        jewelry: ['necklace', 'bracelet', 'earrings', 'ring', 'pendant', 'gold', 'silver', 'dainty', 'minimalist', 'gemstone'],
-        'home decor': ['vase', 'candle', 'throw pillow', 'frame', 'wall art', 'ceramic', 'linen', 'accent', 'decorative', 'diffuser'],
-      },
       aesthetic: { style: ['elegant', 'modern', 'refined'], avoids: [] },
       personality: { traits: ['sophisticated', 'detail-oriented'], giftReceivingStyle: 'very specific taste' },
       constraints: [],
       giftingContext: { previousGifts: [], avoidCategories: [], leanToward: null },
       searchQueries: [
-        { q: 'best wellness gifts for wife', interest: 'wellness' },
-        { q: 'top rated jewelry gifts for wife', interest: 'jewelry' },
-        { q: 'top home decor gifts for her', interest: 'home decor' },
+        { q: 'best women wellness products', interest: 'wellness', strategy: 'direct' },
+        { q: 'top rated women jewelry', interest: 'jewelry', strategy: 'direct' },
+        { q: 'best selling home decor women', interest: 'home decor', strategy: 'direct' },
+        { q: 'luxury aromatherapy diffuser', interest: 'wellness', strategy: 'direct' },
+        { q: 'premium women silk pillowcase', interest: 'wellness', strategy: 'adjacent' },
       ],
       summary: 'Elegant, refined picks for your wife — from wellness luxuries to jewelry and home accents.',
     },
@@ -151,7 +142,7 @@ export const LANDING_PAGES = {
       {
         question: 'What are the best gifts for a wife who is hard to shop for?',
         answer:
-          'Look for elevated everyday items — a silk pillowcase, artisan candles, or dainty jewelry she can layer. Wives with specific taste respond best to gifts that show you notice what she gravitates toward.',
+          'Look for elevated everyday items — a silk pillowcase, scented candles, or dainty jewelry she can layer. Wives with specific taste respond best to gifts that show you notice what she gravitates toward.',
       },
       {
         question: 'How much should I spend on a gift for my wife?',
@@ -161,7 +152,7 @@ export const LANDING_PAGES = {
       {
         question: 'What are romantic gift ideas for my wife?',
         answer:
-          'Romantic doesn\u2019t have to mean clich\u00e9. A beautiful piece of jewelry with a handwritten note, a curated spa-at-home set, or a home decor piece for a room she\u2019s been wanting to update are all deeply thoughtful.',
+          'Romantic doesn\u2019t have to mean clich\u00e9. A quality piece of jewelry with a handwritten note, a curated spa-at-home set, or a home decor piece for a room she\u2019s been wanting to update are all deeply thoughtful.',
       },
       {
         question: 'What gifts do wives actually appreciate?',
@@ -187,19 +178,16 @@ export const LANDING_PAGES = {
       occasion: { event: null, urgency: null },
       budget: { min: 20, max: 100, flexibility: 'flexible' },
       interests: ['fitness', 'fashion', 'travel'],
-      interestAliases: {
-        fitness: ['workout', 'yoga mat', 'resistance bands', 'gym', 'activewear', 'water bottle', 'fitness tracker', 'running', 'exercise', 'athleisure'],
-        fashion: ['accessories', 'scarf', 'handbag', 'sunglasses', 'jewelry', 'trendy', 'style', 'outfit', 'wardrobe', 'clutch'],
-        travel: ['luggage', 'passport holder', 'travel kit', 'packing cubes', 'carry-on', 'adventure', 'wanderlust', 'travel accessories', 'toiletry bag', 'neck pillow'],
-      },
       aesthetic: { style: ['trendy', 'fun', 'vibrant'], avoids: [] },
       personality: { traits: ['energetic', 'social', 'adventurous'], giftReceivingStyle: 'appreciates anything' },
       constraints: [],
       giftingContext: { previousGifts: [], avoidCategories: [], leanToward: null },
       searchQueries: [
-        { q: 'top gifts for sister who loves fitness', interest: 'fitness' },
-        { q: 'best fashion gifts for sister', interest: 'fashion' },
-        { q: 'top rated travel gifts for her', interest: 'travel' },
+        { q: 'best women workout accessories', interest: 'fitness', strategy: 'direct' },
+        { q: 'top rated women activewear', interest: 'fitness', strategy: 'direct' },
+        { q: 'best selling women fashion accessories', interest: 'fashion', strategy: 'direct' },
+        { q: 'top rated travel organizer women', interest: 'travel', strategy: 'direct' },
+        { q: 'premium women water bottle', interest: 'fitness', strategy: 'adjacent' },
       ],
       summary: 'Fun, vibrant picks for the sister who keeps you on your toes — from fitness gear to travel essentials.',
     },
@@ -243,19 +231,16 @@ export const LANDING_PAGES = {
       occasion: { event: 'birthday', urgency: 'soon' },
       budget: { min: 25, max: 150, flexibility: 'flexible' },
       interests: ['self-care', 'accessories', 'gourmet food'],
-      interestAliases: {
-        'self-care': ['spa', 'bath', 'candle', 'face mask', 'lotion', 'relaxation', 'pampering', 'skincare', 'aromatherapy', 'essential oil'],
-        accessories: ['jewelry', 'scarf', 'handbag', 'watch', 'sunglasses', 'hair accessories', 'wallet', 'keychain', 'bracelet', 'earrings'],
-        'gourmet food': ['chocolate', 'tea', 'cheese', 'olive oil', 'honey', 'artisan', 'gift basket', 'snack box', 'truffle', 'gourmet'],
-      },
       aesthetic: { style: ['celebratory', 'special', 'curated'], avoids: [] },
       personality: { traits: ['deserving', 'fun-loving'], giftReceivingStyle: 'appreciates anything' },
       constraints: [],
       giftingContext: { previousGifts: [], avoidCategories: [], leanToward: null },
       searchQueries: [
-        { q: 'best birthday self-care gifts for her', interest: 'self-care' },
-        { q: 'top birthday accessories gifts for women', interest: 'accessories' },
-        { q: 'top rated gourmet gift sets for her birthday', interest: 'gourmet food' },
+        { q: 'best self care products women', interest: 'self-care', strategy: 'direct' },
+        { q: 'top rated women accessories', interest: 'accessories', strategy: 'direct' },
+        { q: 'best selling gourmet chocolate women', interest: 'gourmet food', strategy: 'direct' },
+        { q: 'luxury bath bomb set', interest: 'self-care', strategy: 'direct' },
+        { q: 'premium women tea sampler', interest: 'gourmet food', strategy: 'adjacent' },
       ],
       summary: 'Birthday-worthy picks she\u2019ll love — from self-care luxuries to accessories and gourmet treats.',
     },
@@ -268,7 +253,7 @@ export const LANDING_PAGES = {
       {
         question: 'What are good last-minute birthday gifts for her?',
         answer:
-          'Items with Prime shipping work great for last-minute gifts. A curated spa set, gourmet chocolate box, or a beautiful accessory can arrive in 1\u20132 days and still feel thoughtful. Use GiftHer.ai to find picks fast.',
+          'Items with Prime shipping work great for last-minute gifts. A curated spa set, gourmet chocolate box, or a quality accessory can arrive in 1\u20132 days and still feel thoughtful. Use GiftHer.ai to find picks fast.',
       },
       {
         question: 'How much should you spend on a birthday gift for her?',

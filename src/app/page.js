@@ -18,7 +18,7 @@ const PLACEHOLDER_EXAMPLES = [
 const PERSONA_PRESETS = [
   {
     label: "Her birthday's coming up",
-    prefill: "It's my sister's birthday. She's into working out, knitting, and cycling. She's in her late 20s and loves anything cozy or practical.",
+    prefill: "It's my sister's birthday. She's into working out, knitting, and cycling. She's in her late 20s. I want to get her a nice gift.",
   },
   {
     label: "Something for Mom",
@@ -26,7 +26,7 @@ const PERSONA_PRESETS = [
   },
   {
     label: "For my girlfriend",
-    prefill: "Looking for a gift for my girlfriend. She's into skincare, yoga, and coffee. She appreciates thoughtful, aesthetic things over flashy ones.",
+    prefill: "Looking for a gift for my girlfriend. She's into skincare, yoga, and coffee. I want to get her something she'll really like.",
   },
 ];
 
