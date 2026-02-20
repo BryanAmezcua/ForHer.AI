@@ -36,6 +36,9 @@ const BUDGET_PRESETS = [
   { label: "Over $100", append: " I'm willing to spend over $100 for the right gift." },
 ];
 
+// Detect male-recipient keywords (with common variations)
+const MALE_RECIPIENT_RE = /\b(man|men|dad|daddy|dads|father|papa|husband|hubby|husbands|son|sons|brother|bro|brothers|bros|male|males|grandfather|grandpa|granddad|grandad|grandson|nephew|uncle|boyfriend)\b/i;
+
 const THINKING_STEPS = [
   "Reading between the lines...",
   "Searching for the perfect gifts...",
@@ -161,8 +164,10 @@ function HomeInner() {
     }).then(r => r.json()).then(d => d.tasteProfile);
   };
 
+  const hasMaleRecipient = MALE_RECIPIENT_RE.test(input);
+
   const handleSubmit = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() || hasMaleRecipient) return;
     setPhase('thinking');
     try {
       const profile = await startProfileFetch();
@@ -177,7 +182,7 @@ function HomeInner() {
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit();
+      if (!hasMaleRecipient) handleSubmit();
     }
   };
 
@@ -288,15 +293,21 @@ function HomeInner() {
 
               <Button
                 onClick={handleSubmit}
-                disabled={!input.trim()}
+                disabled={!input.trim() || hasMaleRecipient}
                 className="bg-copper hover:bg-copper/90 text-white font-semibold text-[15px] rounded-xl px-9 py-6 shadow-[0_4px_16px_rgba(200,149,108,0.25)] transition-all duration-300 tracking-wide disabled:opacity-40 disabled:cursor-default"
               >
                 Find her something wonderful
               </Button>
 
-              <p className="text-xs text-muted-foreground/80 mt-5 tracking-wide">
-                No sign-up. No spam. Just a good gift.
-              </p>
+              {hasMaleRecipient ? (
+                <p className="text-xs text-copper/80 mt-5 tracking-wide">
+                  GiftHer.ai is designed for finding gifts for women. Try describing a woman in your life!
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground/80 mt-5 tracking-wide">
+                  No sign-up. No spam. Just a good gift.
+                </p>
+              )}
             </section>
 
             <footer className="text-center mt-16 pt-6 animate-fade-up relative" style={{ animationDelay: '0.4s' }}>
