@@ -19,20 +19,24 @@ Pill rules:
 - Every product MUST have at least 1 pill — always find something meaningful to say
 - Keep labels concise and title-cased (e.g. "Baking Enthusiast", "Minimalist", "Self-Care")
 
+For whySheLikesIt:
+- If a "rerankerReason" is provided for a product, use it as a starting signal for WHY this product was selected — but rewrite it into a natural, gift-giver-friendly sentence
+- Focus on connecting the product to HER specifically, not generic product praise
+
 Return ONLY a JSON array of objects. Each object corresponds to the product at that index:
 [{"pills":[{"label":"Baking Enthusiast","category":"interest"}],"whySheLikesIt":"Perfect for her weekend baking sessions — she'll love experimenting with new recipes."},{"pills":[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],"whySheLikesIt":"Matches her minimalist style and gives her the self-care moment she deserves."}]`;
 
 /**
  * Generate pill labels and "why she'll like it" descriptions for all products in a single LLM call.
  *
- * @param {Array} products - Pruned products (need .title at minimum)
+ * @param {Array} products - Products (need .title at minimum, may have ._rerankerReason)
  * @param {Object} tasteProfile - The user's taste profile
  * @returns {{ pills: Array<Array<{label: string, category: string}>>, whySheLikesIt: string[] }}
  */
 export async function generateProductInsights(products, tasteProfile) {
   const empty = { pills: products.map(() => []), whySheLikesIt: products.map(() => null) };
 
-  // Build a compact profile summary for the prompt (no aliases or clarification needed)
+  // Build a compact profile summary for the prompt
   const profileSummary = {
     interests: tasteProfile.interests,
     aesthetic: tasteProfile.aesthetic,
@@ -41,7 +45,11 @@ export async function generateProductInsights(products, tasteProfile) {
     occasion: tasteProfile.occasion,
   };
 
-  const productList = products.map((p, i) => `${i + 1}. "${p.title}"`).join('\n');
+  const productList = products.map((p, i) => {
+    let line = `${i + 1}. "${p.title}"`;
+    if (p._rerankerReason) line += ` (rerankerReason: "${p._rerankerReason}")`;
+    return line;
+  }).join('\n');
 
   const userMessage = `Taste profile:\n${JSON.stringify(profileSummary, null, 2)}\n\nProducts:\n${productList}`;
 

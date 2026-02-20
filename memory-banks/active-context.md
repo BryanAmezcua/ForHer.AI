@@ -1,7 +1,7 @@
 ## Current state of development
 
 ### Current Focus
-**Amazon-only pipeline migration complete.** Migrated from dual-source (2 Amazon + 1 Google Shopping + Immersive Product enrichment + PDP scoring) to Amazon-only (5 Amazon queries, no enrichment, no PDP scoring). All clicks go to Amazon (affiliate revenue). Added personalized "why she'll like it" LLM descriptions. Pipeline latency reduced by ~3-5s. Credit usage cut from ~70 to ~50 per request (4,000 vs 2,857 monthly capacity).
+**Gift recommendation quality overhaul complete.** Major changes: (1) Query generation rewired — "gift" keyword banned from all search queries, now uses product-category approach (4 direct + 1 adjacent/surprise queries), (2) New LLM reranker step between prune and row assignment — brand-first quality ranking surfaces recognizable brands over junk, (3) Pruning simplified to coarse pre-filter (min price raised to $20, gift-set ban removed, 6-factor scoring removed), (4) Rows sorted by match score instead of price, (5) Trending queries reduced to 1 backup. Net result: same API cost, dramatically better quality products.
 
 ### What's Working
 - Landing page renders with five-phase UI (input → thinking → clarifying → populating → results)
@@ -17,7 +17,7 @@
 - Card hover state: subtle lift (-translate-y-1) + shadow increase
 - Brand mark (copper 4-pointed sparkle) on input, thinking, and clarifying phases
 - Warm radial copper glow behind input area
-- Pipeline over-fetches 16 products, generates insights (pills + reaction lines + whySheLikesIt), slices to 9 for display
+- Pipeline: coarse prune (~30) → LLM reranker (top 12) → row assignment (3x3) → generate insights (pills + reaction lines + whySheLikesIt)
 - Product image component with loading/error fallback states and multi-image gallery
 - Rich summary text with **bold** marker parsing
 - Nav bar in results view with "New Search" back button and "Share" button (copies URL to clipboard)
@@ -27,8 +27,7 @@
 - "Start over" functionality resets all state including clarification
 - Custom "Whiskey Lounge" color scheme applied via CSS variables
 - Fade-up and staggered card animations
-- Gift-set/bundle title filter rejects gift sets, gift boxes, sampler sets, etc. during pruning
-- **Amazon-only product pipeline:** taste profile + query generation (single LLM call, always generates 5 queries) → 5 Amazon queries → dedup → prune → generate insights (pills + reaction lines + whySheLikesIt) → top 9 display
+- **Amazon-only product pipeline:** taste profile + query generation (single LLM call, 5 product-category queries, "gift" banned) → 5-6 Amazon queries → dedup → coarse prune (~30) → LLM rerank (brand-first, top 12) → row assignment (3x3) → generate insights → display
 - Two-tier pill system: LLM gift-fit pills + merchant badges (Free Shipping, Free Returns, X-Day Returns, Prime, Best Seller, Amazon's Choice)
 - "Why she'll like it" descriptions: LLM-generated personalized 1-2 sentence descriptions connecting product to recipient
 - Social proof display: Amazon "50+ bought in past month" text rendered on cards
@@ -49,15 +48,16 @@
 - Error handling is basic (resets to input on failure)
 
 ### Known TODOs
-1. Push to master and verify Amazon-only pipeline in production
-2. Monitor credit usage to confirm ~50 credits/request (~4,000 requests/month)
-3. Verify Amazon affiliate tag appears in product URLs
-4. Verify "why she'll like it" descriptions render on cards
+1. Push to master and verify recommendation quality overhaul in production
+2. Confirm no queries contain "gift" in debug logs
+3. Confirm quality products (known brands, no slogan socks/novelty junk)
+4. Monitor credit usage — same ~50 Amazon credits + ~$0.001 reranker per request
 5. Implement refinement loop (Phase 2)
 6. Wire up "Adjust Preferences" button
 
 ### Recent Changes
-- **Amazon-only migration** — Removed Google Shopping (search-scrapingdog.js), Immersive Product enrichment (enrich-scrapingdog.js), PDP scoring (score-pdp.js), and unused search-queries-deep.js. All 5 queries now go to Amazon Search API. Added `whySheLikesIt` LLM field (personalized descriptions). Removed Amazon pill from frontend. CTA changed to "View on Amazon". Cache TTL reduced from 48h to 24h. Credit usage cut from ~70 to ~50 per request. `max_tokens` bumped: taste profile 1900→2100, pills 900→1400.
+- **Gift recommendation quality overhaul** — Rewrote query generation to ban "gift" keyword and use product-category approach (4 direct + 1 adjacent/surprise queries). Added LLM reranker (`rerank-products.js`) with brand-first quality ranking. Simplified pruning to coarse pre-filter (raised min price $5→$20, removed gift set ban, removed 6-factor scoring). Rows sorted by matchScore instead of price. Trending queries reduced to 1 backup with better text. Reranker reasons passed to insight generation for more specific descriptions.
+- **Amazon-only migration** — Removed Google Shopping (search-scrapingdog.js), Immersive Product enrichment (enrich-scrapingdog.js), PDP scoring (score-pdp.js), and unused search-queries-deep.js. All 5 queries now go to Amazon Search API. Added `whySheLikesIt` LLM field (personalized descriptions). Removed Amazon pill from frontend. CTA changed to "View on Amazon". Cache TTL reduced from 48h to 24h. Credit usage cut from ~70 to ~50 per request.
 - **Session persistence & shareable URLs** — Recommendation sessions saved to MongoDB `sessions` collection (7-day TTL). 10-char hex session IDs. Fire-and-forget save after pipeline. `SessionResults` component extracted from `page.js`. Share button in nav bar copies `/s/[id]` URL. Server component at `/s/[id]` with dynamic OG tags. Custom 404 for expired/invalid sessions.
 
 ### Active Decisions / Open Questions

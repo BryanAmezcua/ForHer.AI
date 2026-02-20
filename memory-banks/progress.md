@@ -101,6 +101,19 @@
 - [x] Updated imports in `route.js` and `pipeline.js`
 - [x] Removed `clarification: undefined` stripping from `resolveTasteProfile()`
 
+### Phase 1.7 — Gift Recommendation Quality Overhaul (Complete)
+- [x] Rewrote query generation: product-category approach, banned "gift" keyword from all queries
+- [x] Queries now generate 4 direct + 1 adjacent/surprise (strategy field added)
+- [x] Added LLM reranker (`src/lib/rerank-products.js`) — brand-first quality ranking
+- [x] Simplified pruning to coarse pre-filter (removed 6-factor scoring, removed gift set ban, raised min price to $20)
+- [x] Wired reranker into pipeline between prune and row assignment
+- [x] Sorted rows by matchScore (best match first) instead of price descending
+- [x] Reduced trending queries to 1 backup (was 2-4), improved trending query text
+- [x] Reranker reasons passed through to insight generation for more specific descriptions
+- [ ] Verify in production
+- [ ] Confirm no queries contain "gift" in debug logs
+- [ ] Confirm quality improvement in results
+
 ### Phase 2 — Not Started
 - [ ] Reject a pick and say why
 - [ ] System returns alternatives informed by rejection

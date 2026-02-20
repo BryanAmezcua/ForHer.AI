@@ -2,9 +2,9 @@ import { generateProfileAndQueries } from '@/lib/taste-profile';
 import { executeAmazonQueries, getAllCachedResults } from '@/lib/search-amazon';
 import { dedupeProducts } from '@/lib/dedupe-products';
 import { pruneProducts, DISPLAY_COUNT } from '@/lib/prune-products';
+import { rerankProducts } from '@/lib/rerank-products';
 import { generateProductInsights } from '@/lib/generate-pills';
 import { cleanTitle } from '@/lib/clean-title';
-import { parsePrice } from '@/lib/parse-price';
 
 // ── Constants ──
 
@@ -12,10 +12,9 @@ const ROW_SIZE = 3;
 const TOTAL_ROWS = 3;
 
 const TRENDING_QUERIES = [
-  'trending products for women',
-  'popular products for her',
-  'top rated products for women',
-  'best products for women',
+  'best selling items for women',
+  'top rated women accessories',
+  'most popular products for her',
 ];
 
 const INTEREST_HEADINGS = [
@@ -25,8 +24,8 @@ const INTEREST_HEADINGS = [
 ];
 
 const TRENDING_HEADINGS = [
-  r => `Popular Gifts for ${cap(r)}`,
-  r => `Other Gifts She Might Love`,
+  r => `Popular Picks for ${cap(r)}`,
+  r => `Other Picks She Might Love`,
 ];
 
 function cap(s) {
@@ -138,17 +137,7 @@ async function resolveTasteProfile(description, providedProfile) {
   return generateProfileAndQueries(description);
 }
 
-// ── Sort products by price descending (highest first) ──
-
-function sortByPriceDesc(products) {
-  return [...products].sort((a, b) => {
-    const pa = parsePrice(a.price) ?? 0;
-    const pb = parsePrice(b.price) ?? 0;
-    return pb - pa;
-  });
-}
-
-// ── Assign products to rows ──
+// ── Assign products to rows (sorted by score, not price) ──
 
 function assignProductsToRows(products, tasteProfile) {
   const recipient = tasteProfile.recipient?.name
@@ -186,10 +175,9 @@ function assignProductsToRows(products, tasteProfile) {
   const rows = [];
   const usedProducts = new Set();
 
-  // Interest rows
+  // Interest rows — sorted by _matchScore (best match first, not priciest)
   interests.forEach((interest, idx) => {
     let bucket = interestBuckets.get(interest);
-    // Sort by _matchScore descending, take top ROW_SIZE
     bucket.sort((a, b) => (b._matchScore || 0) - (a._matchScore || 0));
     let rowProducts = bucket.slice(0, ROW_SIZE);
 
@@ -206,8 +194,8 @@ function assignProductsToRows(products, tasteProfile) {
     // Mark used
     for (const p of rowProducts) usedProducts.add(p);
 
-    // Sort row by price descending (highest = first = top pick)
-    rowProducts = sortByPriceDesc(rowProducts);
+    // Sort row by _matchScore descending (best match = first = TOP PICK)
+    rowProducts.sort((a, b) => (b._matchScore || 0) - (a._matchScore || 0));
 
     const heading = INTEREST_HEADINGS[idx % INTEREST_HEADINGS.length](interest);
     rows.push({ heading, type: 'interest', interest, products: rowProducts });
@@ -226,7 +214,8 @@ function assignProductsToRows(products, tasteProfile) {
     }
 
     if (rowProducts.length > 0) {
-      rowProducts = sortByPriceDesc(rowProducts);
+      // Sort by score descending
+      rowProducts.sort((a, b) => (b._matchScore || 0) - (a._matchScore || 0));
       const heading = TRENDING_HEADINGS[trendingIdx % TRENDING_HEADINGS.length](recipient);
       rows.push({ heading, type: 'trending', interest: null, products: rowProducts });
       trendingIdx++;
@@ -244,18 +233,19 @@ async function runCacheOnlyPipeline(tasteProfile) {
   const cachedResults = await getAllCachedResults();
   const uniqueProducts = dedupeProducts(cachedResults);
   const prunedProducts = pruneProducts(uniqueProducts, tasteProfile);
-  const finalProducts = prunedProducts.slice(0, DISPLAY_COUNT);
+  const reranked = await rerankProducts(prunedProducts, tasteProfile);
+  const finalProducts = reranked.slice(0, DISPLAY_COUNT);
 
   // Single trending row as fallback
   const recipient = tasteProfile.recipient?.name
     || tasteProfile.recipient?.relationship
     || 'her';
-  const sortedProducts = sortByPriceDesc(finalProducts);
+  finalProducts.sort((a, b) => (b._matchScore || 0) - (a._matchScore || 0));
   const rows = [{
-    heading: `Popular Gifts for ${cap(recipient)}`,
+    heading: `Popular Picks for ${cap(recipient)}`,
     type: 'trending',
     interest: null,
-    recommendations: sortedProducts.map((p, i) =>
+    recommendations: finalProducts.map((p, i) =>
       buildRecommendation(p, i === 0, 'trending', tasteProfile)
     ),
   }];
@@ -265,19 +255,24 @@ async function runCacheOnlyPipeline(tasteProfile) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // FULL pipeline — sends queries to Amazon, deduplicates, prunes,
-// assigns to rows, generates insights, and builds recommendation objects.
+// reranks via LLM, assigns to rows, generates insights, and builds
+// recommendation objects.
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function runFullPipeline(tasteProfile) {
-  // Step 1: Build query list — interest queries + trending to reach 5 total
+  // Step 1: Build query list — interest queries + 1 trending backup
   const interestQueries = (tasteProfile.searchQueries || []).map(q => ({
     q: q.q,
     interest: q.interest || null,
   }));
 
   const allQueries = [...interestQueries];
+
+  // Add 1 trending query as backup when interest queries are present,
+  // or 2-3 trending queries when interests are sparse
+  const trendingCount = interestQueries.length >= 3 ? 1 : (interestQueries.length >= 1 ? 2 : 3);
   let trendingIdx = 0;
-  while (allQueries.length < 5 && trendingIdx < TRENDING_QUERIES.length) {
+  while (allQueries.length < interestQueries.length + trendingCount && trendingIdx < TRENDING_QUERIES.length) {
     allQueries.push({ q: TRENDING_QUERIES[trendingIdx], interest: null });
     trendingIdx++;
   }
@@ -298,17 +293,20 @@ async function runFullPipeline(tasteProfile) {
   // Step 4: Deduplicate across queries (preserves _sourceInterest)
   const uniqueProducts = dedupeProducts(searchResults);
 
-  // Step 5: Prune to top 20
+  // Step 5: Coarse pre-filter to ~30 candidates
   const prunedProducts = pruneProducts(uniqueProducts, tasteProfile);
 
-  // Step 6: Assign to rows (4 rows of 3)
-  const productRows = assignProductsToRows(prunedProducts, tasteProfile);
+  // Step 6: LLM rerank — brand-first quality judgment
+  const reranked = await rerankProducts(prunedProducts, tasteProfile);
 
-  // Step 7: Generate insights for all products across rows
+  // Step 7: Assign to rows (3 rows of 3, sorted by score)
+  const productRows = assignProductsToRows(reranked, tasteProfile);
+
+  // Step 8: Generate insights for all products across rows
   const allProducts = productRows.flatMap(row => row.products);
   const insights = await generateProductInsights(allProducts, tasteProfile);
 
-  // Step 8: Build recommendation objects within each row
+  // Step 9: Build recommendation objects within each row
   let globalIdx = 0;
   const rows = productRows.map(row => {
     const recommendations = row.products.map((p, j) => {

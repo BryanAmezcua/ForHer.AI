@@ -46,8 +46,9 @@ ForHer.AI/
 │       ├── search-amazon.js    # executeAmazonQueries() + getAllCachedResults() — ScrapingDog Amazon Search API + MongoDB cache + affiliate tagging
 │       ├── clean-title.js      # cleanTitle() — strips e-commerce junk from product titles (brands, recipients, sizes)
 │       ├── dedupe-products.js  # dedupeProducts() — Jaccard + price clustering for shopping results
-│       ├── prune-products.js   # pruneProducts() — Gift-set filter + score + cut to top 16
-│       ├── generate-pills.js   # generateProductInsights() — LLM-generated pills + reaction lines + whySheLikesIt
+│       ├── prune-products.js   # pruneProducts() — Coarse pre-filter (no image, price floor, data quality sort) → top 30 for reranker
+│       ├── rerank-products.js  # rerankProducts() — LLM reranker: brand-first quality ranking, returns top 12 with giftScore + reason
+│       ├── generate-pills.js   # generateProductInsights() — LLM-generated pills + reaction lines + whySheLikesIt (uses reranker reasons)
 │       ├── debug.js            # Debug/logging utility
 │       ├── parse-price.js      # Price string parsing utility
 │       ├── strip-markdown.js   # Markdown stripping utility
@@ -89,12 +90,12 @@ The main page uses a `phase` state to switch between five views:
 2. If budget missing: client shows budget pills (instant, no API wait), taste profile fetches in parallel
 3. Client POSTs `{ tasteProfile }` to `/api/recommendations` (pre-built profile, skips re-generation)
    - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
-- Taste profile + 5 Amazon search queries generated via a single OpenAI call from the free-text description
+- Taste profile + 5 Amazon search queries generated via a single OpenAI call from the free-text description (queries use product-category approach, never contain the word "gift")
 
 **Product Discovery Pipeline:**
 - Orchestrated by `pipeline.js` — supports both cache-only (emergency fallback) and full modes (currently full)
-- Flow: taste profile → 5 Amazon queries → `dedupeProducts()` → `pruneProducts()` (gift-set filter + top 16) → `generateProductInsights()` (pills + reaction lines + whySheLikesIt) → top 9 display
-- Generates 5 broad, natural Amazon search queries via OpenAI
+- Flow: taste profile → 5-6 Amazon queries → `dedupeProducts()` → `pruneProducts()` (coarse filter → ~30) → `rerankProducts()` (LLM brand-first ranking → top 12) → `assignProductsToRows()` → `generateProductInsights()` (pills + reaction lines + whySheLikesIt) → 3x3 display
+- Generates 5 product-category search queries via OpenAI (4 direct + 1 adjacent/surprise, "gift" keyword banned)
 - All results are Amazon-only: rich data (Prime, ratings, reviews, social proof), affiliate-tagged URLs
 - Results cached in MongoDB with 24-hour TTL
 - Cache keys: `sha256("amazon|US|" + normalizedQuery)`
@@ -112,12 +113,18 @@ The main page uses a `phase` state to switch between five views:
 - Winner selection: prefer listings with image, then lowest price
 - Attaches `clusterSize` to each winner for downstream scoring
 
-**Shopping Pruning:**
-- `src/lib/prune-products.js` — `pruneProducts(products, tasteProfile)` scores and cuts to top 16
-- Hard filters: drop items with no image, drop gift sets/bundles (title regex patterns)
-- Weighted scoring: interest relevance (30%), budget fit (25%), confidence (20%), price sanity (10%), data completeness (10%), review volume (5%)
-- Attaches `_matchScore` to each product for downstream badge derivation
-- Sorts descending, returns top 16 (ENRICH_POOL_SIZE); exports DISPLAY_COUNT = 9
+**Shopping Pruning (Coarse Pre-filter):**
+- `src/lib/prune-products.js` — `pruneProducts(products, tasteProfile)` applies hard filters and soft-sorts for the reranker
+- Hard filters: drop items with no image, drop items under $20 (adaptive if budget max is below threshold)
+- Soft sort by data quality: rating, review volume, price info, budget fit
+- Returns top ~30 candidates (COARSE_POOL_SIZE) for the LLM reranker; exports DISPLAY_COUNT = 9
+
+**LLM Reranking:**
+- `src/lib/rerank-products.js` — `rerankProducts(candidates, tasteProfile)` evaluates ~30 candidates via LLM
+- Brand-first ranking hierarchy: recognized brands > premium/artisan brands > well-reviewed unbranded > hard reject (novelty/slogan items)
+- Returns top 12 products with `_matchScore` (0-100 giftScore) and `_rerankerReason` (10-word explanation)
+- Graceful fallback: on LLM failure, returns candidates in input order with default scores
+- Cost: ~$0.001/request (gpt-4o-mini, small payload)
 
 **Product Insights (LLM):**
 - `src/lib/generate-pills.js` — `generateProductInsights()` generates pills + reaction lines + whySheLikesIt in a single LLM call
