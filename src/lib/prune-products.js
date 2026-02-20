@@ -1,7 +1,7 @@
 import { parsePrice } from './parse-price';
 import { debugLog } from './debug';
 
-const ENRICH_POOL_SIZE = 16; // Pre-insight pool
+const ENRICH_POOL_SIZE = 20; // Pre-insight pool
 export const DISPLAY_COUNT = 9; // Final display count
 const MIN_PRICE = 5; // Items under $5 are probably not real gifts
 const MIN_TOKEN_LENGTH = 3;

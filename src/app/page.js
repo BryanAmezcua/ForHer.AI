@@ -35,21 +35,6 @@ const BUDGET_PRESETS = [
   { label: "Over $100", append: " I'm willing to spend over $100 for the right gift." },
 ];
 
-// Detect whether the user mentioned a budget in any common form
-function hasBudgetMention(text) {
-  return /\$\s?\d|\bbudget\b|\bspend|\bunder\s+\d|\bsplurge\b|\bcheap\b|\bafford|\bprice[ds]?\b|\bcosts?\b|\bamount\b|\btotal\b/i.test(text);
-}
-
-// Static clarification shown instantly when no budget is detected
-const BUDGET_CLARIFICATION = {
-  question: 'Any rough budget in mind so we don\u2019t overshoot?',
-  options: [
-    { label: 'Under $50',   patch: { budget: { min: 0,   max: 50,  flexibility: 'flexible' } } },
-    { label: '$50\u2013$100',  patch: { budget: { min: 50,  max: 100, flexibility: 'flexible' } } },
-    { label: '$100+',       patch: { budget: { min: 100, max: null, flexibility: 'open' } } },
-  ],
-};
-
 const THINKING_STEPS = [
   "Reading between the lines...",
   "Searching for the perfect gifts...",
@@ -62,22 +47,6 @@ const POPULATING_MESSAGES = [
   "Finding the best options...",
   "Almost there...",
 ];
-
-// Shallow-merge a patch into the taste profile (one level deep for nested objects)
-function patchProfile(profile, patch) {
-  const result = { ...profile };
-  for (const [key, value] of Object.entries(patch)) {
-    if (Array.isArray(value) && Array.isArray(result[key])) {
-      // Merge arrays (e.g. interests)
-      result[key] = [...result[key], ...value];
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
-      result[key] = { ...result[key], ...value };
-    } else {
-      result[key] = value;
-    }
-  }
-  return result;
-}
 
 function BrandMark() {
   return (
@@ -95,17 +64,15 @@ export default function Home() {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [phase, setPhase] = useState('input');
   const [presetStep, setPresetStep] = useState('persona'); // 'persona' | 'budget' | 'done'
-  const [recommendations, setRecommendations] = useState([]);
+  const [rows, setRows] = useState([]);
   const [meta, setMeta] = useState(null);
   const [tasteProfile, setTasteProfile] = useState(null);
-  const [clarification, setClarification] = useState(null);
   const [thinkingStep, setThinkingStep] = useState(0);
   const [populatingMsgIndex, setPopulatingMsgIndex] = useState(0);
   const [sessionId, setSessionId] = useState(null);
   const [error, setError] = useState(null);
   const textareaRef = useRef(null);
   const abortRef = useRef(null);
-  const profilePromiseRef = useRef(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -156,7 +123,7 @@ export default function Home() {
       });
       const data = await res.json();
       clearTimeout(skeletonTimer);
-      setRecommendations(data.recommendations);
+      setRows(data.rows);
       setMeta(data.meta);
       setTasteProfile(data.tasteProfile);
       if (data.sessionId) {
@@ -173,50 +140,21 @@ export default function Home() {
     }
   };
 
-  // Fire the taste-profile fetch (returns a promise, does NOT await)
   const startProfileFetch = () => {
-    const promise = fetch('/api/taste-profile', {
+    return fetch('/api/taste-profile', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: input }),
     }).then(r => r.json()).then(d => d.tasteProfile);
-    profilePromiseRef.current = promise;
-    return promise;
   };
 
   const handleSubmit = async () => {
     if (!input.trim()) return;
-
-    if (!hasBudgetMention(input)) {
-      // No budget detected → show budget pills instantly, prefetch profile in background
-      setClarification(BUDGET_CLARIFICATION);
-      setPhase('clarifying');
-      startProfileFetch();
-      return;
-    }
-
-    // Budget present → go straight through
     setPhase('thinking');
     try {
       const profile = await startProfileFetch();
       setTasteProfile(profile);
       await fetchRecommendations(profile);
-    } catch (err) {
-      console.error(err);
-      setPhase('input');
-    }
-  };
-
-  const handleClarificationSelect = async (option) => {
-    setPhase('thinking');
-    setClarification(null);
-
-    try {
-      // Await the profile that's been fetching in the background
-      const profile = await profilePromiseRef.current;
-      const patched = patchProfile(profile, option.patch);
-      setTasteProfile(patched);
-      await fetchRecommendations(patched);
     } catch (err) {
       console.error(err);
       setPhase('input');
@@ -232,13 +170,11 @@ export default function Home() {
 
   const handleStartOver = () => {
     if (abortRef.current) abortRef.current.abort();
-    profilePromiseRef.current = null;
     setInput('');
     setPresetStep('persona');
-    setRecommendations([]);
+    setRows([]);
     setMeta(null);
     setTasteProfile(null);
-    setClarification(null);
     setSessionId(null);
     setError(null);
     setPhase('input');
@@ -409,50 +345,6 @@ export default function Home() {
           </div>
         )}
 
-        {/* ==================== CLARIFYING PHASE ==================== */}
-        {phase === 'clarifying' && clarification && (
-          <div className="max-w-[680px] mx-auto px-4 sm:px-6 pt-10 sm:pt-16 pb-10">
-            {/* Compact header */}
-            <header className="text-center mb-8 sm:mb-10">
-              <BrandMark />
-              <h1 className="text-2xl sm:text-[2.2rem] font-bold tracking-tight leading-none">
-                <span className="text-foreground">Gift</span><span className="text-copper">Her</span><span className="text-muted-foreground font-normal">.ai</span>
-              </h1>
-            </header>
-
-            {/* User's input shown as read-only context */}
-            <div className="bg-white/[0.04] border border-border/50 rounded-xl px-4 sm:px-5 py-3 sm:py-4 text-sm text-foreground/50 leading-relaxed mb-5 sm:mb-6 line-clamp-3">
-              {input}
-            </div>
-
-            {/* Clarification card */}
-            <div className="animate-fade-up bg-white/[0.06] backdrop-blur-md border border-border rounded-2xl p-5 sm:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-              <div className="text-center mb-5 sm:mb-6">
-                <span className="text-lg text-copper mb-3 inline-block">&mdash;</span>
-                <p className="text-[15px] sm:text-base font-semibold text-foreground mb-1.5">
-                  One quick thing&hellip;
-                </p>
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-sm mx-auto">
-                  {clarification.question}
-                </p>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 justify-center">
-                {clarification.options.map((opt, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleClarificationSelect(opt)}
-                    className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 rounded-full bg-white/[0.08] border border-border text-sm font-medium text-foreground hover:bg-white/[0.14] hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 cursor-pointer animate-fade-up"
-                    style={{ animationDelay: `${0.15 + i * 0.1}s` }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ==================== POPULATING PHASE ==================== */}
         {phase === 'populating' && (
           <div className="animate-fade-up">
@@ -489,10 +381,19 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* ── Skeleton cards ── */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
-                {[0, 1, 2, 3, 4].map(i => (
-                  <GiftCardSkeleton key={i} index={i} isTopPick={i === 0} />
+              {/* ── Skeleton rows ── */}
+              <div className="space-y-12 mb-16">
+                {[0, 1, 2].map(rowIdx => (
+                  <div key={rowIdx}>
+                    <div className="h-5 w-48 rounded-full bg-border/50 animate-pulse mb-4" />
+                    <div className="flex gap-4 overflow-hidden md:grid md:grid-cols-3 md:gap-6">
+                      {[0, 1, 2].map(j => (
+                        <div key={j} className="shrink-0 w-[280px] md:w-auto">
+                          <GiftCardSkeleton index={rowIdx * 3 + j} isTopPick={j === 0} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -531,7 +432,7 @@ export default function Home() {
         {/* ==================== RESULTS PHASE ==================== */}
         {phase === 'results' && (
           <SessionResults
-            recommendations={recommendations}
+            rows={rows}
             meta={meta}
             sessionId={sessionId}
             isShared={false}

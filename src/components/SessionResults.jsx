@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { RichSummary } from '@/components/RichSummary';
 import { GiftCard } from '@/components/GiftCard';
 
-export function SessionResults({ recommendations, meta, sessionId, isShared, onStartOver }) {
+export function SessionResults({ rows, meta, sessionId, isShared, onStartOver }) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
@@ -14,7 +14,6 @@ export function SessionResults({ recommendations, meta, sessionId, isShared, onS
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback for older browsers
       const input = document.createElement('input');
       input.value = url;
       document.body.appendChild(input);
@@ -91,10 +90,19 @@ export function SessionResults({ recommendations, meta, sessionId, isShared, onS
           <RichSummary text={meta?.summary} />
         </div>
 
-        {/* Product cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-16">
-          {recommendations.map((gift, i) => (
-            <GiftCard key={i} gift={gift} index={i} isTopPick={i === 0} />
+        {/* Product rows */}
+        <div className="space-y-12 mb-16">
+          {(rows || []).map((row, rowIdx) => (
+            <section key={rowIdx}>
+              <h3 className="text-lg font-semibold text-foreground mb-4">{row.heading}</h3>
+              <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 scrollbar-hide md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:snap-none md:mx-0 md:px-0 md:pb-0">
+                {row.recommendations.map((gift, j) => (
+                  <div key={j} className="snap-center shrink-0 w-[280px] md:w-auto">
+                    <GiftCard gift={gift} index={j} isTopPick={j === 0} />
+                  </div>
+                ))}
+              </div>
+            </section>
           ))}
         </div>
 

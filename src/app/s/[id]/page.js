@@ -46,7 +46,7 @@ export default async function SharedSessionPage({ params }) {
       />
       <div className="relative z-10">
         <SessionResults
-          recommendations={session.recommendations}
+          rows={session.rows}
           meta={session.meta}
           sessionId={id}
           isShared={true}

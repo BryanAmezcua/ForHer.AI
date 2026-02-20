@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/mongoose';
 
 const sessionSchema = new mongoose.Schema({
   _id: { type: String },
-  recommendations: { type: mongoose.Schema.Types.Mixed, required: true },
+  rows: { type: mongoose.Schema.Types.Mixed, required: true },
   meta: {
     curatedFor: { type: String },
     summary: { type: String },
@@ -24,7 +24,7 @@ export function saveSession(result) {
   connectDB()
     .then(() => Session.create({
       _id: sessionId,
-      recommendations: result.recommendations,
+      rows: result.rows,
       meta: result.meta,
       tasteProfile: result.tasteProfile,
       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),

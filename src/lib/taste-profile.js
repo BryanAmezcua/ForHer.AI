@@ -39,12 +39,8 @@ Analyze the description and return a JSON object with these fields:
     "avoidCategories": string[],
     "leanToward": string | null
   },
-  "searchQueries": [                // 5 broad Amazon search queries — ALWAYS generate these
-    { "q": string },
-    { "q": string },
-    { "q": string },
-    { "q": string },
-    { "q": string }
+  "searchQueries": [                // 1-3 interest-specific Amazon search queries — one per distinct interest
+    { "q": string, "interest": string }
   ]
 }
 
@@ -56,17 +52,19 @@ Rules:
 - Be specific with interests. "Cooking" is fine, but "baking sourdough" is better if the description supports it.
 - Infer personality and aesthetic from context clues, not just explicit statements.
 - For interestAliases: generate ~10 shopping-relevant tokens per interest. These should be product names, brand-neutral terms, synonyms, and related words that would appear in Amazon product titles. Example: "fancy coffee" → ["espresso", "pour-over", "latte", "barista", "grinder", "french press", "cold brew", "drip", "moka", "chemex"]. Focus on commercial/product language, not abstract concepts. Every interest in the interests array must have a corresponding entry in interestAliases.
-- ALWAYS generate exactly 5 searchQueries. Never omit them.
+- ALWAYS generate 1 to 3 searchQueries. Never omit them.
 
 Search query rules:
-- Generate exactly 5 gift-oriented Amazon search queries. Frame every query around gift discovery, NOT raw supplies or equipment.
-- Each query should explore a DIFFERENT angle/interest from the profile.
+- Generate 1 to 3 interest-specific gift-oriented Amazon search queries. Generate one query per distinct interest, up to 3. Do not generate trending or generic queries — those are added automatically.
+- Each query object must include an "interest" field matching one of the entries in the interests[] array.
+- Frame every query around gift discovery, NOT raw supplies or equipment.
 - Keep queries under 8 words when possible. Use simple, everyday language.
 - Use "top", "top rated", or "best" to lead queries — these surface popular, well-reviewed products on Amazon.
 - Connect the recipient relationship + interest: "top gifts for [relationship] who loves [interest]"
-- Good: "top gifts for girlfriend who loves cooking", "best gifts for mom who likes gardening", "top rated yoga gifts for wife", "top gifts for her self care", "best cozy gifts for homebody girlfriend"
+- Good: "top gifts for girlfriend who loves cooking", "best gifts for mom who likes gardening", "top rated yoga gifts for wife"
 - Bad (raw supplies, not gifts): "knitting supplies for women", "workout gear for girlfriend", "baking tools kitchen"
 - Bad (too specific/SEO-y): "artisan hand-thrown ceramic pour-over dripper gift set", "best luxury organic body oil premium gift box 2024"
+- Bad (generic/trending): "best gifts for women", "popular products for her" — these are added automatically, do NOT generate them.
 - Respect avoidCategories and constraints — never generate queries for excluded items.
 - Return ONLY the JSON object, no markdown fencing, no explanation.`;
 
@@ -78,7 +76,7 @@ export async function generateProfileAndQueries(description) {
       { role: 'user', content: description },
     ],
     temperature: 0.3,
-    max_tokens: 2100,
+    max_tokens: 1900,
   });
 
   const content = response.choices[0].message.content.trim();

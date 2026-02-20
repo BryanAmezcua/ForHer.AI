@@ -149,6 +149,17 @@ export function dedupeProducts(searchResults) {
     }
 
     bestEntry.item.clusterSize = cluster.length;
+
+    // Preserve _sourceInterest: if any cluster member has one, assign to winner
+    if (!bestEntry.item._sourceInterest) {
+      for (const member of cluster) {
+        if (member.item._sourceInterest) {
+          bestEntry.item._sourceInterest = member.item._sourceInterest;
+          break;
+        }
+      }
+    }
+
     return bestEntry.item;
   });
 
