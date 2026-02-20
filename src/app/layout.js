@@ -1,3 +1,4 @@
+import Script from 'next/script';
 import { Manrope } from 'next/font/google';
 import './globals.css';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -30,6 +31,12 @@ export default function RootLayout({ children }) {
       <body className={`${manrope.variable} font-display antialiased`}>
         {children}
         <SiteFooter />
+        <Script
+          defer
+          src="https://cloud.umami.is/script.js"
+          data-website-id="e3e7950b-7d36-4497-ae8a-aab5380a6bc4"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );
