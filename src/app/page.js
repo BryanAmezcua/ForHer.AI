@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { GiftCardSkeleton } from '@/components/GiftCardSkeleton';
@@ -59,8 +60,11 @@ function BrandMark() {
   );
 }
 
-export default function Home() {
-  const [input, setInput] = useState('');
+function HomeInner() {
+  const searchParams = useSearchParams();
+  const [input, setInput] = useState(() => {
+    return ''; // hydration-safe; prefill applied in useEffect
+  });
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [phase, setPhase] = useState('input');
   const [presetStep, setPresetStep] = useState('persona'); // 'persona' | 'budget' | 'done'
@@ -80,6 +84,15 @@ export default function Home() {
     }, 4500);
     return () => clearInterval(interval);
   }, []);
+
+  // Pre-fill from ?prefill= URL param (landing page deep-link)
+  useEffect(() => {
+    const prefill = searchParams.get('prefill');
+    if (prefill) {
+      setInput(prefill);
+      setPresetStep('done');
+    }
+  }, [searchParams]);
 
   // Advance thinking steps on timers
   useEffect(() => {
@@ -441,5 +454,13 @@ export default function Home() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeInner />
+    </Suspense>
   );
 }

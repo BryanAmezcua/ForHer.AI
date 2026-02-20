@@ -1,5 +1,6 @@
 import { Manrope } from 'next/font/google';
 import './globals.css';
+import { SiteFooter } from '@/components/SiteFooter';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={`${manrope.variable} font-display antialiased`}>
         {children}
+        <SiteFooter />
       </body>
     </html>
   );
