@@ -21,7 +21,19 @@
 ### Per-Credit Cost
 - $40 / 200,000 = **$0.0002 per credit**
 
-### Per Uncached Request Breakdown (Current — 2 Amazon + 1 Google Shopping)
+### Per Uncached Request Breakdown (Current — 5 Amazon queries)
+| Step | Credits per call | Calls | Total credits |
+|------|-----------------|-------|---------------|
+| Amazon Search query | 10 | 5 | 50 |
+| **Total per uncached request** | | | **50** |
+
+### Cost Per Request
+- 50 credits × $0.0002 = **$0.01 (1 cent)**
+
+### Monthly Capacity
+- 200,000 / 50 = **4,000 uncached requests/month**
+
+### Previous (2 Amazon + 1 Google Shopping + Immersive Product, for reference)
 | Step | Credits per call | Calls | Total credits |
 |------|-----------------|-------|---------------|
 | Google Shopping query | 10 | 1 | 10 |
@@ -29,26 +41,14 @@
 | Immersive Product API (Google products only) | 5 | ~8 | ~40 |
 | **Total per uncached request** | | | **~70** |
 
-### Cost Per Request
-- ~70 credits × $0.0002 = **$0.014 (~1.4 cents)**
-
-### Monthly Capacity
-- 200,000 / 70 = **~2,857 uncached requests/month**
-
-### Previous (Google Shopping only, for reference)
-| Step | Credits per call | Calls | Total credits |
-|------|-----------------|-------|---------------|
-| Shopping API query | 10 | 3 | 30 |
-| Immersive Product API (enrichment) | 5 | 16 | 80 |
-| **Total per uncached request** | | | **110** |
-
-- Was: 200,000 / 110 = ~1,818 uncached requests/month
-- **Savings: ~36% fewer credits per request, ~57% more monthly capacity**
+- Was: 200,000 / 70 = ~2,857 uncached requests/month
+- **Savings: ~29% fewer credits per request, ~40% more monthly capacity**
 
 ### Notes
-- Cached requests cost nothing (MongoDB 48-hour TTL cache)
-- Enrichment pool is 16 products; only top 9 are displayed after PDP scoring
+- Cached requests cost nothing (MongoDB 24-hour TTL cache)
+- Over-fetch pool is 16 products; top 9 displayed
 - Shopping queries are normalized before caching, so similar queries hit the same cache entry
+- All clicks go to Amazon (affiliate revenue via `?tag=giftherai-20`)
 
 ---
 

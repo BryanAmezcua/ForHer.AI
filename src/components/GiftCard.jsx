@@ -114,10 +114,10 @@ export function GiftCard({ gift, index, isTopPick }) {
           {gift.name}
         </h3>
 
-        {/* Reaction prediction line */}
-        {gift.reactionLine && (
-          <p className="text-[12px] italic text-warm-gray-light/80 mb-2 leading-relaxed">
-            &ldquo;{gift.reactionLine}&rdquo;
+        {/* Why she'll like it */}
+        {gift.description && (
+          <p className="text-[12.5px] text-warm-gray-light/90 mb-2 leading-relaxed">
+            {gift.description}
           </p>
         )}
 
@@ -137,11 +137,8 @@ export function GiftCard({ gift, index, isTopPick }) {
         )}
 
         {/* Pills */}
-        {(gift.matchedAttributes?.length > 0 || gift.merchantBadges?.length > 0 || gift.sourceTag === 'amazon') ? (
+        {(gift.matchedAttributes?.length > 0 || gift.merchantBadges?.length > 0) ? (
           <div className="flex flex-wrap gap-1.5 mb-auto">
-            {gift.sourceTag === 'amazon' && (
-              <ProfilePill label="Amazon" category="amazon" />
-            )}
             {gift.matchedAttributes?.map((attr, i) => (
               <ProfilePill key={`fit-${i}`} label={attr.label} category={attr.category} />
             ))}

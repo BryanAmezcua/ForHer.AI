@@ -1,11 +1,8 @@
 import { generateProfileAndQueries } from '@/lib/taste-profile';
-import { executeScrapingDogQueries, getAllCachedResults } from '@/lib/search-scrapingdog';
-import { executeAmazonQueries } from '@/lib/search-amazon';
+import { executeAmazonQueries, getAllCachedResults } from '@/lib/search-amazon';
 import { dedupeProducts } from '@/lib/dedupe-products';
 import { pruneProducts, DISPLAY_COUNT } from '@/lib/prune-products';
-import { enrichProducts } from '@/lib/enrich-scrapingdog';
 import { generateProductInsights } from '@/lib/generate-pills';
-import { scorePDP, PDP_REJECT_THRESHOLD } from '@/lib/score-pdp';
 import { cleanTitle } from '@/lib/clean-title';
 
 // ── Merchant badge extraction ──
@@ -43,7 +40,6 @@ function extractMerchantBadges(extensions) {
 // ── Badge derivation from matchScore + taste profile ──
 
 function deriveBadge(matchScore, index, tasteProfile) {
-  // Top pick with high score → confidence badge
   if (index === 0 && matchScore >= 85) {
     return { badgeLabel: 'Best Match', badgeType: 'confidence' };
   }
@@ -51,79 +47,49 @@ function deriveBadge(matchScore, index, tasteProfile) {
     return { badgeLabel: 'Great Match', badgeType: 'confidence' };
   }
 
-  // Occasion-specific badge when a real occasion is present
   const occasion = tasteProfile.occasion?.event;
   if (occasion && occasion !== 'just because') {
     const capitalized = occasion.charAt(0).toUpperCase() + occasion.slice(1);
     return { badgeLabel: `Perfect for ${capitalized}`, badgeType: 'occasion' };
   }
 
-  // Fallback — social/emotional badge
   return { badgeLabel: "She'll Love This", badgeType: 'social' };
 }
 
 // ── Map a product to a recommendation object ──
 
-function buildRecommendation(product, index, tasteProfile, { pills, reactionLine, isEnriched } = {}) {
+function buildRecommendation(product, index, tasteProfile, { pills, whySheLikesIt } = {}) {
   const matchScore = product._matchScore ?? null;
   const { badgeLabel, badgeType } = matchScore !== null
     ? deriveBadge(matchScore, index, tasteProfile)
     : { badgeLabel: null, badgeType: null };
 
-  const isAmazon = product._source === 'amazon';
+  const merchantBadges = extractMerchantBadges(product.extensions);
+  if (product.isPrime && !merchantBadges.includes('Prime')) {
+    merchantBadges.unshift('Prime');
+  }
 
-  const base = {
+  return {
     name: cleanTitle(product.title),
     price: product.price || 'Price unavailable',
     rating: product.rating || null,
     tag: index === 0 ? 'TOP PICK' : 'GREAT FIND',
-    ctaText: 'View Product',
+    ctaText: 'View on Amazon',
     ctaColor: '#c8956c',
     imageBg: '#252220',
     matchScore,
     badgeLabel,
     badgeType,
-    reactionLine: reactionLine || null,
-    sourceTag: isAmazon ? 'amazon' : null,
-    socialProof: isAmazon ? (product.socialProof || null) : null,
-  };
-
-  if (isEnriched) {
-    const rec = {
-      ...base,
-      description: product.description || '',
-      brand: product.brand || null,
-      rating: product.merchantRating || product.rating || null,
-      url: product.merchantUrl,
-      imageUrl: product.imageUrl,
-      imageUrls: product.imageUrls?.length > 1 ? product.imageUrls : [],
-      matchedAttributes: pills || [],
-      merchantBadges: extractMerchantBadges(product.merchantExtensions),
-    };
-
-    if (isAmazon && product.isPrime && !rec.merchantBadges.includes('Prime')) {
-      rec.merchantBadges.unshift('Prime');
-    }
-
-    return rec;
-  }
-
-  const rec = {
-    ...base,
-    description: '',
+    description: whySheLikesIt || '',
+    sourceTag: 'amazon',
+    socialProof: product.socialProof || null,
     brand: null,
     url: product.link,
     imageUrl: product.imageUrl,
     imageUrls: [],
-    matchedAttributes: [],
-    merchantBadges: extractMerchantBadges(product.extensions),
+    matchedAttributes: pills || [],
+    merchantBadges,
   };
-
-  if (isAmazon && product.isPrime && !rec.merchantBadges.includes('Prime')) {
-    rec.merchantBadges.unshift('Prime');
-  }
-
-  return rec;
 }
 
 // ── Build the meta object from a taste profile ──
@@ -148,7 +114,7 @@ async function resolveTasteProfile(description, providedProfile) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// CACHE-ONLY pipeline — skips ScrapingDog API calls to save credits.
+// CACHE-ONLY pipeline — emergency fallback. Skips API calls to save credits.
 // Pulls all cached results from MongoDB, deduplicates, prunes, and returns.
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -159,57 +125,39 @@ async function runCacheOnlyPipeline(tasteProfile) {
   const finalProducts = prunedProducts.slice(0, DISPLAY_COUNT);
 
   const recommendations = finalProducts.map((p, i) =>
-    buildRecommendation(p, i, tasteProfile, { isEnriched: false })
+    buildRecommendation(p, i, tasteProfile)
   );
 
   return { recommendations, meta: buildMeta(tasteProfile, recommendations.length) };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// FULL pipeline — generates queries, searches via ScrapingDog, deduplicates,
-// prunes, enriches products, generates pill labels, and applies PDP scoring.
+// FULL pipeline — sends all queries to Amazon, deduplicates, prunes,
+// generates insights (pills + whySheLikesIt), and builds
+// recommendation objects.
 // ═══════════════════════════════════════════════════════════════════════════
 
 async function runFullPipeline(tasteProfile) {
-  // Step 1: Split queries — first 2 → Amazon, third → Google Shopping — execute in parallel
-  const amazonQueries = { queries: tasteProfile.searchQueries.slice(0, 2) };
-  const googleQueries = { queries: tasteProfile.searchQueries.slice(2, 3) };
+  // Step 1: Send all 5 queries to Amazon
+  const searchResults = await executeAmazonQueries({ queries: tasteProfile.searchQueries });
 
-  const [googleResults, amazonResults] = await Promise.all([
-    executeScrapingDogQueries(googleQueries),
-    executeAmazonQueries(amazonQueries),
-  ]);
-
-  const searchResults = [...googleResults, ...amazonResults];
-
-  // Step 3: Deduplicate across queries
+  // Step 2: Deduplicate across queries
   const uniqueProducts = dedupeProducts(searchResults);
 
-  // Step 4: Prune to enrichment pool
+  // Step 3: Prune to top 16
   const prunedProducts = pruneProducts(uniqueProducts, tasteProfile);
 
-  // Step 5: Enrich products + generate insights (pills + reaction lines) in parallel
-  const [enrichedProducts, insights] = await Promise.all([
-    enrichProducts(prunedProducts),
-    generateProductInsights(prunedProducts, tasteProfile),
-  ]);
+  // Step 4: Generate insights (pills + whySheLikesIt)
+  const insights = await generateProductInsights(prunedProducts, tasteProfile);
 
-  // Step 6: PDP confidence scoring — reject non-product pages
-  const pdpScored = enrichedProducts.map((p, i) => ({
-    ...p,
-    _originalIndex: i,
-    _pdpScore: scorePDP({ url: p.merchantUrl, title: p.title, price: p.price, snippet: p.description }),
-  }));
+  // Step 5: Slice to display count
+  const finalProducts = prunedProducts.slice(0, DISPLAY_COUNT);
 
-  const pdpPassed = pdpScored.filter(p => p._pdpScore > PDP_REJECT_THRESHOLD);
-  const finalProducts = pdpPassed.slice(0, DISPLAY_COUNT);
-
-  // Step 7: Build recommendation objects
+  // Step 6: Build recommendation objects
   const recommendations = finalProducts.map((p, i) =>
     buildRecommendation(p, i, tasteProfile, {
-      pills: insights.pills[p._originalIndex] || [],
-      reactionLine: insights.reactionLines[p._originalIndex] || null,
-      isEnriched: true,
+      pills: insights.pills[i] || [],
+      whySheLikesIt: insights.whySheLikesIt[i] || null,
     })
   );
 
@@ -220,7 +168,7 @@ async function runFullPipeline(tasteProfile) {
 // Public entry point — switch between cache-only and full pipeline here.
 // ═══════════════════════════════════════════════════════════════════════════
 
-const CACHE_ONLY = false; // Set to false to restore full ScrapingDog pipeline
+const CACHE_ONLY = false;
 
 export async function runPipeline({ description, tasteProfile: providedProfile }) {
   const tasteProfile = await resolveTasteProfile(description, providedProfile);

@@ -25,14 +25,14 @@
 | **Vercel** | Hosting (Next.js, serverless functions) | $20/mo (Pro plan) |
 | **Cloudflare** | DNS for gifther.ai → Vercel | Free |
 | **MongoDB Atlas** | Shopping cache database | Free tier (IP: 0.0.0.0/0 for Vercel) |
-| **ScrapingDog** | Product search + enrichment APIs | $40/mo (LITE plan, 200k credits) |
+| **ScrapingDog** | Amazon Search API | $40/mo (LITE plan, 200k credits) |
 | **OpenAI** | LLM (taste profile, queries, pills, reactions) | Free (sponsor key) |
 
 ### Environment Variables
 | Key | Purpose |
 |-----|---------|
 | `OPENAI_API_KEY` | OpenAI API access |
-| `SCRAPINGDOG_API_KEY` | ScrapingDog Shopping + Amazon Search + Immersive Product APIs |
+| `SCRAPINGDOG_API_KEY` | ScrapingDog Amazon Search API |
 | `MONGODB_URI` | MongoDB Atlas connection string |
 
 These are set in both `.env.local` (local dev) and Vercel project settings (production).
@@ -60,8 +60,8 @@ npm run start  # Start production server
 - **App Router:** Using Next.js App Router (not Pages Router)
 - **Client-side main page:** `page.js` uses `'use client'` for interactive state management
 - **Remote images allowed:** `next.config.mjs` allows images from any HTTPS hostname
-- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`. Cluster: `cached-data`, database: `GiftHer`. Collections: `products` (scraped product cache, 48h TTL), `sessions` (shareable recommendation sessions, 7-day TTL). Atlas IP whitelist: `0.0.0.0/0` (required for Vercel serverless).
-- **ScrapingDog:** Google Shopping API + Amazon Search API + Immersive Product API. ~70 credits per uncached request (~2,857 requests/month on LITE plan $40/mo). Amazon products skip Immersive Product enrichment.
+- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`. Cluster: `cached-data`, database: `GiftHer`. Collections: `products` (Amazon product cache, 24h TTL), `sessions` (shareable recommendation sessions, 7-day TTL). Atlas IP whitelist: `0.0.0.0/0` (required for Vercel serverless).
+- **ScrapingDog:** Amazon Search API only. ~50 credits per uncached request (~4,000 requests/month on LITE plan $40/mo).
 - **Vercel auto-deploy:** Every push to `master` triggers a production deployment.
 
 ### Development Workflow
@@ -75,7 +75,7 @@ npm run start  # Start production server
 - Pages: `src/app/page.js`
 - API Routes: `src/app/api/*/route.js`
 - Pipeline: `src/lib/pipeline.js` (orchestrator), `src/lib/*.js` (individual steps)
-- Search: `src/lib/search-scrapingdog.js` (Google Shopping), `src/lib/search-amazon.js` (Amazon)
+- Search: `src/lib/search-amazon.js` (Amazon Search + cache)
 - Utilities: `src/lib/utils.js`, `src/lib/debug.js`, `src/lib/parse-price.js`, `src/lib/strip-markdown.js`, `src/lib/clean-title.js`
 - Path alias: `@/` maps to `./src/`
 

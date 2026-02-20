@@ -7,9 +7,9 @@ const API_KEY = process.env.SCRAPINGDOG_API_KEY;
 const AMAZON_ENDPOINT = 'https://api.scrapingdog.com/amazon/search';
 const AFFILIATE_TAG = 'giftherai-20';
 
-const TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
+const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
-// ── Stopword list for query normalization (shared with search-scrapingdog.js) ──
+// ── Stopword list for query normalization ──
 const STOPWORDS = new Set([
   'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
   'of', 'with', 'by', 'from', 'is', 'it', 'as', 'be', 'was', 'are',
@@ -148,7 +148,8 @@ async function executeOneQuery(rawQuery) {
     api_key: API_KEY,
     domain: 'com',
     query: rawQuery,
-    page: '1'
+    page: '1',
+    // premium: 'true'
   });
 
   const response = await fetch(`${AMAZON_ENDPOINT}?${params}`);
@@ -168,6 +169,17 @@ async function executeOneQuery(rawQuery) {
   await createMongoDocument(rawQuery, normalized, cacheKey, results);
 
   return { query: rawQuery, shopping: results, fromCache: false };
+}
+
+// ── Public: grab all cached results from MongoDB ──
+export async function getAllCachedResults() {
+  await connectDB();
+  const docs = await ShoppingCache.find({}).lean();
+  const allResults = docs.flatMap(doc => doc.results || []);
+  debugLog(`\n========== CACHE-ONLY MODE ==========`);
+  debugLog(`Loaded ${allResults.length} products from ${docs.length} cached queries`);
+  debugLog(`=====================================\n`);
+  return [{ query: '(cached)', shopping: allResults, fromCache: true }];
 }
 
 // ── Public: execute Amazon queries ──

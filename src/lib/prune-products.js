@@ -1,8 +1,8 @@
 import { parsePrice } from './parse-price';
 import { debugLog } from './debug';
 
-const ENRICH_POOL_SIZE = 16; // Pre-enrichment pool — over-fetch to allow PDP filtering
-export const DISPLAY_COUNT = 9; // Final display count after PDP scoring
+const ENRICH_POOL_SIZE = 16; // Pre-insight pool
+export const DISPLAY_COUNT = 9; // Final display count
 const MIN_PRICE = 5; // Items under $5 are probably not real gifts
 const MIN_TOKEN_LENGTH = 3;
 
@@ -98,11 +98,11 @@ function budgetFitScore(priceValue, budget) {
  * Scores and prunes deduplicated shopping results.
  * Drops items without images and gift sets/bundles, scores remainder on
  * budget fit, cluster size, interest relevance, data completeness, and price sanity.
- * Returns the top 16 (enrichment pool — PDP scoring trims to 9 downstream).
+ * Returns the top 16 for insight generation, then sliced to 9 for display.
  *
  * @param {Array} products - Deduplicated shopping items (with clusterSize attached)
  * @param {Object} tasteProfile - The user's taste profile
- * @returns {Array} Top 16 pruned products (enrichment pool)
+ * @returns {Array} Top 16 pruned products
  */
 export function pruneProducts(products, tasteProfile) {
   const { budget, interests, interestAliases } = tasteProfile;
@@ -168,7 +168,7 @@ export function pruneProducts(products, tasteProfile) {
   const pruned = scored.slice(0, ENRICH_POOL_SIZE);
 
   debugLog(`\n========== PRODUCT PRUNE ==========`);
-  debugLog(`${products.length} products → ${withImages.length} with images → ${noGiftSets.length} after gift-set filter → top ${pruned.length} kept (pool for enrichment)`);
+  debugLog(`${products.length} products → ${withImages.length} with images → ${noGiftSets.length} after gift-set filter → top ${pruned.length} kept`);
   if (droppedNoImage > 0) {
     debugLog(`  (${droppedNoImage} dropped for missing image)`);
   }

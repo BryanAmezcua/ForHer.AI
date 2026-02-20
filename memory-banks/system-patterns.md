@@ -43,15 +43,11 @@ ForHer.AI/
 │       ├── mongoose.js         # MongoDB connection singleton (cached, targets serper-queries DB)
 │       ├── taste-profile.js    # generateProfileAndQueries() — LLM taste extraction + query generation (always returns searchQueries)
 │       ├── pipeline.js         # runPipeline() — orchestrates full product discovery pipeline
-│       ├── search-scrapingdog.js  # executeScrapingDogQueries() — ScrapingDog Shopping API + MongoDB cache
-│       ├── search-amazon.js    # executeAmazonQueries() — ScrapingDog Amazon Search API + MongoDB cache + affiliate tagging
+│       ├── search-amazon.js    # executeAmazonQueries() + getAllCachedResults() — ScrapingDog Amazon Search API + MongoDB cache + affiliate tagging
 │       ├── clean-title.js      # cleanTitle() — strips e-commerce junk from product titles (brands, recipients, sizes)
 │       ├── dedupe-products.js  # dedupeProducts() — Jaccard + price clustering for shopping results
-│       ├── prune-products.js   # pruneProducts() — Gift-set filter + score + cut to top 16 (enrichment pool)
-│       ├── enrich-scrapingdog.js # enrichProducts() — ScrapingDog Immersive Product API for merchant URLs + descriptions + store selection
-│       ├── generate-pills.js   # generateProductInsights() — LLM-generated pills + reaction lines
-│       ├── score-pdp.js        # scorePDP() — PDP confidence scoring (URL/title/snippet signals)
-│       ├── search-queries-deep.js # generateDeepQueries() — 3 broad Google queries (may be unused if merged into taste-profile)
+│       ├── prune-products.js   # pruneProducts() — Gift-set filter + score + cut to top 16
+│       ├── generate-pills.js   # generateProductInsights() — LLM-generated pills + reaction lines + whySheLikesIt
 │       ├── debug.js            # Debug/logging utility
 │       ├── parse-price.js      # Price string parsing utility
 │       ├── strip-markdown.js   # Markdown stripping utility
@@ -85,7 +81,7 @@ The main page uses a `phase` state to switch between five views:
 - If no budget detected: budget pills appear instantly (`BUDGET_CLARIFICATION` static object), taste profile API runs in background (`profilePromiseRef`)
 - If budget present: goes straight to thinking phase, awaits profile, then fetches recommendations
 - When user picks a budget option: awaits the in-flight profile promise, patches budget in, proceeds to recommendations
-- No LLM clarification — the LLM always returns a complete profile + 3 search queries
+- No LLM clarification — the LLM always returns a complete profile + 5 search queries
 
 **API Communication (Two-step flow):**
 1. Client POSTs `{ description }` to `/api/taste-profile`
@@ -93,16 +89,15 @@ The main page uses a `phase` state to switch between five views:
 2. If budget missing: client shows budget pills (instant, no API wait), taste profile fetches in parallel
 3. Client POSTs `{ tasteProfile }` to `/api/recommendations` (pre-built profile, skips re-generation)
    - Server returns `{ recommendations: [...], meta: { curatedFor, summary }, tasteProfile: {...} }`
-- Taste profile + search queries generated via a single OpenAI call from the free-text description
+- Taste profile + 5 Amazon search queries generated via a single OpenAI call from the free-text description
 
 **Product Discovery Pipeline:**
-- Orchestrated by `pipeline.js` — supports both cache-only and full modes (currently full)
-- Flow: taste profile → query generation (merged into taste profile LLM call) → 2 Amazon queries + 1 Google Shopping query (parallel) → `dedupeProducts()` → `pruneProducts()` (gift-set filter + top 16) → `enrichProducts()` + `generateProductInsights()` (parallel) → `scorePDP()` filter → top 9 display
-- Generates 3 broad, natural queries via OpenAI; first 2 go to Amazon, third to Google Shopping
-- Amazon results: rich data (Prime, ratings, reviews, social proof), affiliate-tagged URLs, skip Immersive Product enrichment
-- Google Shopping results: enriched via ScrapingDog Immersive Product API for merchant URLs + descriptions
-- Results cached in MongoDB with 48-hour TTL
-- Cache keys: `sha256("scrapingdog|US|" + normalizedQuery)` for Google, `sha256("amazon|US|" + normalizedQuery)` for Amazon
+- Orchestrated by `pipeline.js` — supports both cache-only (emergency fallback) and full modes (currently full)
+- Flow: taste profile → 5 Amazon queries → `dedupeProducts()` → `pruneProducts()` (gift-set filter + top 16) → `generateProductInsights()` (pills + reaction lines + whySheLikesIt) → top 9 display
+- Generates 5 broad, natural Amazon search queries via OpenAI
+- All results are Amazon-only: rich data (Prime, ratings, reviews, social proof), affiliate-tagged URLs
+- Results cached in MongoDB with 24-hour TTL
+- Cache keys: `sha256("amazon|US|" + normalizedQuery)`
 - Queries normalized: stopword removal + basic stemming + sorted
 
 **Title Cleaning:**
@@ -121,23 +116,12 @@ The main page uses a `phase` state to switch between five views:
 - `src/lib/prune-products.js` — `pruneProducts(products, tasteProfile)` scores and cuts to top 16
 - Hard filters: drop items with no image, drop gift sets/bundles (title regex patterns)
 - Weighted scoring: interest relevance (30%), budget fit (25%), confidence (20%), price sanity (10%), data completeness (10%), review volume (5%)
-- Attaches `_pruneScore` to each product for downstream matchScore calculation
+- Attaches `_matchScore` to each product for downstream badge derivation
 - Sorts descending, returns top 16 (ENRICH_POOL_SIZE); exports DISPLAY_COUNT = 9
 
-**PDP Confidence Scoring:**
-- `src/lib/score-pdp.js` — `scorePDP({ url, title, price, snippet })` returns numeric confidence score
-- Thresholds: >= +3 accept, <= -2 reject, -1 to +2 pass as-is
-- Runs after ScrapingDog enrichment, before final assembly; trims to DISPLAY_COUNT (9)
-
-**Product Enrichment (ScrapingDog Immersive Product):**
-- `src/lib/enrich-scrapingdog.js` — `enrichProducts(products)` resolves merchant URLs and descriptions
-- Store selection algorithm picks best store: reject out-of-stock, score on PDP signals, ratings, stock, shipping
-- Batched 5 at a time (ScrapingDog LITE plan concurrency limit)
-- Amazon products (`_source === 'amazon'`) skip enrichment (no `immersiveUrl`), fall through to `buildFallback()` which preserves their rich search data (rating, reviews, extensions, merchantName = "Amazon")
-
 **Product Insights (LLM):**
-- `src/lib/generate-pills.js` — `generateProductInsights()` generates pills + reaction lines in a single LLM call
-- Returns: matchedAttributes (1-2 pills per product) + reactionLine (predicted recipient reaction)
+- `src/lib/generate-pills.js` — `generateProductInsights()` generates pills + reaction lines + whySheLikesIt in a single LLM call
+- Returns: matchedAttributes (1-2 pills per product) + reactionLine (predicted recipient reaction) + whySheLikesIt (1-2 sentence personalized description, max ~30 words)
 
 **Pipeline Output (buildRecommendation):**
 - `pipeline.js` maps products to recommendation objects with all fields
@@ -148,7 +132,7 @@ The main page uses a `phase` state to switch between five views:
 **Shopping Cache (MongoDB):**
 - Connection: `src/lib/mongoose.js` — cached singleton, cluster `cached-data`, database `GiftHer`
 - Model: `src/lib/models/shopping-cache.js` — collection `products`
-- TTL index on `expiresAt` — MongoDB auto-deletes expired documents
+- TTL index on `expiresAt` — MongoDB auto-deletes expired documents (24-hour TTL)
 
 **Session Persistence (MongoDB):**
 - Model: `src/lib/models/session.js` — collection `sessions`
@@ -167,9 +151,9 @@ Each recommendation object contains:
 {
   name: string,              // Product name (cleaned via cleanTitle())
   price: string,             // Display price
-  description: string,       // Product description from Immersive Product
+  description: string,       // "Why she'll like it" — LLM-generated personalized description
   brand: string|null,        // Brand name
-  rating: string|null,       // e.g. "4.7" (prefers merchant-level, falls back to Google/Amazon aggregate)
+  rating: string|null,       // e.g. "4.7" (Amazon aggregate)
   tag: string,               // Category label (e.g., "TOP PICK", "GREAT FIND")
   matchScore: number|null,   // 0-100 match confidence (MatchRing shows at >= 85)
   badgeLabel: string|null,   // e.g., "Best Match", "She'll Love This"
@@ -177,13 +161,13 @@ Each recommendation object contains:
   reactionLine: string|null, // LLM-generated predicted reaction quote
   matchedAttributes: [{ label: string, category: string }], // LLM gift-fit pills
   merchantBadges: string[],  // e.g. ["Prime", "Free Shipping", "Best Seller", "30-Day Returns"]
-  ctaText: string,           // Button text
+  ctaText: string,           // "View on Amazon"
   ctaColor: string,          // Hex color for CTA
-  url: string,               // Purchase link (merchant URL, Amazon affiliate link, or Google Shopping fallback)
+  url: string,               // Amazon affiliate link
   imageUrl: string,          // Primary product image
   imageUrls: string[],       // Thumbnail gallery (empty if ≤1 image)
   imageBg: string,           // Fallback background color
-  sourceTag: string|null,    // "amazon" or null — drives Amazon badge on frontend
+  sourceTag: string,         // Always "amazon"
   socialProof: string|null,  // e.g. "50+ bought in past month" — Amazon social proof
 }
 ```
@@ -226,7 +210,6 @@ Brand color aliases:
 | `budget` | warm-gray/12 | warm-gray (#8a8380) |
 | `context` | white/6 | warm-gray (#8a8380) |
 | `merchant` | sage-green/10 | muted sage (#7a9a7a) |
-| `amazon` | orange/12 | Amazon orange (#FF9900) |
 
 ### Animations
 - `fade-up` — Entry animation for sections (opacity + translateY)

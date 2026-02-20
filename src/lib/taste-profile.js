@@ -7,18 +7,18 @@ Analyze the description and return a JSON object with these fields:
 
 {
   "recipient": {
-    "name": string | null,          // Her name if mentioned
+    "name": string | null,
     "relationship": string | null,  // e.g. "mom", "girlfriend", "wife", "sister", "grandma", "friend"
-    "age": number | null,           // Age or estimate if mentioned
+    "age": number | null,
     "lifestage": string | null      // e.g. "college student", "new mom", "retired", "young professional"
   },
   "occasion": {
     "event": string | null,         // e.g. "birthday", "anniversary", "christmas", "just because"
-    "urgency": string | null        // "immediate" (1-3 days), "soon" (1-2 weeks), "relaxed" (2+ weeks), or null
+    "urgency": string | null        // "immediate", "soon", "relaxed", or null
   },
   "budget": {
-    "min": number | null,           // Lower bound in USD
-    "max": number | null,           // Upper bound in USD
+    "min": number | null,
+    "max": number | null,
     "flexibility": string | null    // "strict", "flexible", or "open"
   },
   "interests": string[],            // Hobbies, passions, things she loves (e.g. "gardening", "true crime podcasts", "fancy coffee")
@@ -26,20 +26,22 @@ Analyze the description and return a JSON object with these fields:
     "[interest]": string[]          // ~10 tokens per interest — product terms, synonyms, and related words likely to appear in shopping titles
   },
   "aesthetic": {
-    "style": string[],              // Style descriptors (e.g. "minimalist", "bohemian", "classic", "cozy")
-    "avoids": string[]              // Things she dislikes or would not want
+    "style": string[],              // e.g. "minimalist", "bohemian", "classic", "cozy"
+    "avoids": string[]
   },
   "personality": {
-    "traits": string[],             // Personality read (e.g. "practical", "sentimental", "adventurous")
-    "giftReceivingStyle": string | null  // How she likely receives gifts: "hard to shop for", "appreciates anything", "very specific taste", "experiences over things"
+    "traits": string[],             // e.g. "practical", "sentimental", "adventurous"
+    "giftReceivingStyle": string | null  // "hard to shop for", "appreciates anything", "very specific taste", "experiences over things"
   },
-  "constraints": string[],          // Hard constraints (e.g. "hates clutter", "allergic to fragrance", "doesn't wear jewelry")
+  "constraints": string[],
   "giftingContext": {
-    "previousGifts": string[],      // Anything mentioned as already given or she already owns
-    "avoidCategories": string[],    // Categories to skip (e.g. "candles", "gift cards")
-    "leanToward": string | null     // If the user hinted at a direction (e.g. "something experiential", "something she'd never buy herself")
+    "previousGifts": string[],
+    "avoidCategories": string[],
+    "leanToward": string | null
   },
-  "searchQueries": [                // 3 broad Google Shopping search queries — ALWAYS generate these
+  "searchQueries": [                // 5 broad Amazon search queries — ALWAYS generate these
+    { "q": string },
+    { "q": string },
     { "q": string },
     { "q": string },
     { "q": string }
@@ -53,15 +55,17 @@ Rules:
 - If no budget is mentioned, leave it null — don't guess.
 - Be specific with interests. "Cooking" is fine, but "baking sourdough" is better if the description supports it.
 - Infer personality and aesthetic from context clues, not just explicit statements.
-- For interestAliases: generate ~10 shopping-relevant tokens per interest. These should be product names, brand-neutral terms, synonyms, and related words that would appear in Google Shopping titles. Example: "fancy coffee" → ["espresso", "pour-over", "latte", "barista", "grinder", "french press", "cold brew", "drip", "moka", "chemex"]. Focus on commercial/product language, not abstract concepts. Every interest in the interests array must have a corresponding entry in interestAliases.
-- ALWAYS generate exactly 3 searchQueries. Never omit them.
+- For interestAliases: generate ~10 shopping-relevant tokens per interest. These should be product names, brand-neutral terms, synonyms, and related words that would appear in Amazon product titles. Example: "fancy coffee" → ["espresso", "pour-over", "latte", "barista", "grinder", "french press", "cold brew", "drip", "moka", "chemex"]. Focus on commercial/product language, not abstract concepts. Every interest in the interests array must have a corresponding entry in interestAliases.
+- ALWAYS generate exactly 5 searchQueries. Never omit them.
 
 Search query rules:
-- Generate exactly 3 broad, natural Google search queries a real person would type to find gifts based on this profile.
+- Generate exactly 5 gift-oriented Amazon search queries. Frame every query around gift discovery, NOT raw supplies or equipment.
 - Each query should explore a DIFFERENT angle/interest from the profile.
 - Keep queries under 8 words when possible. Use simple, everyday language.
-- Incorporate the recipient relationship and key interests.
-- Good: "gifts for girlfriend who likes cooking", "cozy gifts for homebody girlfriend", "unique birthday gifts for wife who loves yoga"
+- Always lead with gift intent: "gifts for", "gift for", "best gifts for", "unique gifts for", "top gifts for".
+- Connect the recipient relationship + interest: "gifts for [relationship] who loves [interest]"
+- Good: "gifts for girlfriend who loves cooking", "best gifts for mom who likes gardening", "unique gifts for wife who loves yoga", "top gifts for her self care", "cozy gifts for homebody girlfriend"
+- Bad (raw supplies, not gifts): "knitting supplies for women", "workout gear for girlfriend", "baking tools kitchen"
 - Bad (too specific/SEO-y): "artisan hand-thrown ceramic pour-over dripper gift set", "best luxury organic body oil premium gift box 2024"
 - Respect avoidCategories and constraints — never generate queries for excluded items.
 - Return ONLY the JSON object, no markdown fencing, no explanation.`;
@@ -74,7 +78,7 @@ export async function generateProfileAndQueries(description) {
       { role: 'user', content: description },
     ],
     temperature: 0.3,
-    max_tokens: 1900,
+    max_tokens: 2100,
   });
 
   const content = response.choices[0].message.content.trim();

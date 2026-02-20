@@ -38,7 +38,6 @@
 - [x] MongoDB caching for shopping results (48h TTL, stopword+stemming normalization)
 - [x] Shopping deduplication (Jaccard similarity + price clustering, cluster size tracking)
 - [x] Shopping pruning (weighted scoring on 6 dimensions incl. rating/reviews, top 16 cutoff)
-- [x] ScrapingDog Immersive Product enrichment (merchant URLs + descriptions + store selection, batched 5 at a time)
 - [x] Real product data wired into recommendations
 - [x] Two-tier pill system: LLM gift-fit pills + merchant badges
 - [x] Star ratings on gift cards
@@ -59,12 +58,25 @@
 ### Phase 1.5 — Amazon Integration (Complete)
 - [x] Amazon product integration via ScrapingDog Amazon Search API
 - [x] Amazon Associates affiliate link tagging (`?tag=giftherai-20`)
-- [x] Amazon badge on frontend (orange pill, social proof text)
 - [x] Title cleaning utility (`clean-title.js`)
 - [x] Favicon, apple-touch-icon, and OG image
-- [ ] Verify Amazon integration live in production
-- [ ] Monitor credit savings (~70 credits/request vs. 110)
+- [ ] Verify Amazon-only pipeline live in production
+- [ ] Monitor credit savings (~50 credits/request)
 - [ ] Affiliate revenue tracking
+
+### Phase 1.6 — Amazon-Only Migration (Complete)
+- [x] Migrated from dual-source (2 Amazon + 1 Google Shopping) to Amazon-only (5 Amazon queries)
+- [x] Removed Google Shopping search (`search-scrapingdog.js`)
+- [x] Removed Immersive Product enrichment (`enrich-scrapingdog.js`)
+- [x] Removed PDP confidence scoring (`score-pdp.js`)
+- [x] Removed unused `search-queries-deep.js`
+- [x] Added `whySheLikesIt` LLM field (personalized product descriptions)
+- [x] Added `getAllCachedResults()` to `search-amazon.js`
+- [x] Reduced cache TTL from 48h to 24h
+- [x] Removed Amazon pill from frontend (all products are Amazon now)
+- [x] CTA changed to "View on Amazon"
+- [x] Updated memory-bank files
+- [ ] Verify in production
 
 ### Session Persistence & Shareable URLs (Complete)
 - [x] Session Mongoose model (`src/lib/models/session.js`) with 7-day TTL

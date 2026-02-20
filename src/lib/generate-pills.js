@@ -5,7 +5,7 @@ import { debugLog } from './debug';
 const SYSTEM_PROMPT = `You are a gift recommendation assistant. Given a taste profile describing a gift recipient and a list of products selected for her, generate two things per product:
 
 1. **pills** — 1-2 short pill labels explaining WHY this product fits her specifically.
-2. **reactionLine** — A short, warm predicted reaction from the recipient (6-12 words).
+2. **whySheLikesIt** — A 1-2 sentence personalized description (max ~30 words) connecting this product to her interests, personality, or the occasion. Write as if explaining to the gift-giver why this is a great pick for her.
 
 Pill rules:
 - Each pill has a "label" (2-4 words) and a "category" (one of: "interest", "aesthetic", "personality", "context")
@@ -19,26 +19,18 @@ Pill rules:
 - Every product MUST have at least 1 pill — always find something meaningful to say
 - Keep labels concise and title-cased (e.g. "Baking Enthusiast", "Minimalist", "Self-Care")
 
-Reaction line rules:
-- Write as if predicting what the recipient would say or feel when receiving this gift
-- Keep it warm, specific, and conversational — not generic
-- 6-12 words, no quotes around it
-- Examples: "She'll use this every single morning", "This is so her style", "She's been eyeing something like this"
-- Avoid generic lines like "She'll love it" — connect to something specific about her or the product
-
 Return ONLY a JSON array of objects. Each object corresponds to the product at that index:
-[{"pills":[{"label":"Baking Enthusiast","category":"interest"}],"reactionLine":"She'll want to bake every weekend"},{"pills":[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],"reactionLine":"This is exactly her vibe"}]`;
+[{"pills":[{"label":"Baking Enthusiast","category":"interest"}],"whySheLikesIt":"Perfect for her weekend baking sessions — she'll love experimenting with new recipes."},{"pills":[{"label":"Minimalist","category":"aesthetic"},{"label":"Self-Care","category":"personality"}],"whySheLikesIt":"Matches her minimalist style and gives her the self-care moment she deserves."}]`;
 
 /**
- * Generate pill labels and reaction lines for all products in a single LLM call.
- * Runs in parallel with enrichment — only needs product titles + taste profile.
+ * Generate pill labels and "why she'll like it" descriptions for all products in a single LLM call.
  *
  * @param {Array} products - Pruned products (need .title at minimum)
  * @param {Object} tasteProfile - The user's taste profile
- * @returns {{ pills: Array<Array<{label: string, category: string}>>, reactionLines: string[] }}
+ * @returns {{ pills: Array<Array<{label: string, category: string}>>, whySheLikesIt: string[] }}
  */
 export async function generateProductInsights(products, tasteProfile) {
-  const empty = { pills: products.map(() => []), reactionLines: products.map(() => null) };
+  const empty = { pills: products.map(() => []), whySheLikesIt: products.map(() => null) };
 
   // Build a compact profile summary for the prompt (no aliases or clarification needed)
   const profileSummary = {
@@ -61,7 +53,7 @@ export async function generateProductInsights(products, tasteProfile) {
         { role: 'user', content: userMessage },
       ],
       temperature: 0.3,
-      max_tokens: 900,
+      max_tokens: 1100,
     });
 
     const content = response.choices[0].message.content.trim();
@@ -74,7 +66,7 @@ export async function generateProductInsights(products, tasteProfile) {
     products.forEach((p, i) => {
       const entry = parsed[i] || {};
       const labels = (entry.pills || []).map(pill => `${pill.label} (${pill.category})`).join(', ');
-      debugLog(`  ${p.title} → ${labels || '(none)'} | "${entry.reactionLine || '(none)'}"`);
+      debugLog(`  ${p.title} → ${labels || '(none)'}`);
     });
     debugLog('======================================\n');
 
@@ -86,12 +78,12 @@ export async function generateProductInsights(products, tasteProfile) {
         .slice(0, 2);
     });
 
-    const reactionLines = products.map((_, i) => {
+    const whySheLikesIt = products.map((_, i) => {
       const entry = parsed[i];
-      return (entry && typeof entry.reactionLine === 'string') ? entry.reactionLine : null;
+      return (entry && typeof entry.whySheLikesIt === 'string') ? entry.whySheLikesIt : null;
     });
 
-    return { pills, reactionLines };
+    return { pills, whySheLikesIt };
   } catch (err) {
     console.error('Product insight generation failed:', err.message);
     return empty;

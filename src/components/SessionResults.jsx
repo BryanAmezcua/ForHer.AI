@@ -59,7 +59,7 @@ export function SessionResults({ recommendations, meta, sessionId, isShared, onS
         {sessionId ? (
           <button
             onClick={handleShare}
-            className="flex items-center gap-1.5 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer min-w-[44px] min-h-[44px] justify-end"
+            className="flex items-center gap-1.5 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-copper/30"
           >
             {copied ? (
               <span className="text-copper text-xs font-medium">Copied!</span>
@@ -69,7 +69,7 @@ export function SessionResults({ recommendations, meta, sessionId, isShared, onS
                   <path d="M4 12V14H14V4H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
-                <span className="hidden sm:inline">Share</span>
+                <span>Share</span>
               </>
             )}
           </button>
