@@ -12,9 +12,9 @@ const ROW_SIZE = 3;
 const TOTAL_ROWS = 3;
 
 const TRENDING_QUERIES = [
-  'best selling items for women',
-  'top rated women accessories',
-  'most popular products for her',
+  'best selling items for women 2025',
+  'top rated women accessories 2025',
+  'most popular products for her 2025',
 ];
 
 const INTEREST_HEADINGS = [
@@ -24,8 +24,9 @@ const INTEREST_HEADINGS = [
 ];
 
 const TRENDING_HEADINGS = [
-  r => `Popular Picks for ${cap(r)}`,
-  r => `Other Picks She Might Love`,
+  () => `We Think She'll Love These Too`,
+  () => `A Few More She Might Like`,
+  () => `Some Other Ideas for Her`,
 ];
 
 function cap(s) {
@@ -197,6 +198,7 @@ function assignProductsToRows(products, tasteProfile) {
     // Sort row by _matchScore descending (best match = first = TOP PICK)
     rowProducts.sort((a, b) => (b._matchScore || 0) - (a._matchScore || 0));
 
+    if (rowProducts.length === 0) return; // skip empty rows
     const heading = INTEREST_HEADINGS[idx % INTEREST_HEADINGS.length](interest);
     rows.push({ heading, type: 'interest', interest, products: rowProducts });
   });

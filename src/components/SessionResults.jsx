@@ -92,7 +92,7 @@ export function SessionResults({ rows, meta, sessionId, isShared, onStartOver })
 
         {/* Product rows */}
         <div className="space-y-12 mb-16">
-          {(rows || []).map((row, rowIdx) => (
+          {(rows || []).filter(row => row.recommendations?.length > 0).map((row, rowIdx) => (
             <section key={rowIdx}>
               <h3 className="text-lg font-semibold text-foreground mb-4">{row.heading}</h3>
               <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 -mx-4 px-4 scrollbar-hide md:grid md:grid-cols-3 md:gap-6 md:overflow-visible md:snap-none md:mx-0 md:px-0 md:pb-0">

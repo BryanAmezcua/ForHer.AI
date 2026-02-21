@@ -9,8 +9,8 @@ import { SessionResults } from '@/components/SessionResults';
 
 const PLACEHOLDER_EXAMPLES = [
   "My mom loves gardening and hates clutter. Her birthday is next week...",
-  "Girlfriend, 28, obsessed with true crime podcasts and fancy coffee. Anniversary coming up, budget ~$75...",
-  "My wife never buys anything for herself. She loves cooking and quiet mornings. Under $100...",
+  "Girlfriend, 28, obsessed with skincare and fancy coffee. Anniversary coming up, budget ~$75...",
+  "My wife never buys anything for herself. She loves cooking and scented candles. Under $100...",
   "Grandma is 80 and doesn't need anything. She likes birds and crossword puzzles...",
   "She's my best friend, turning 30. Into yoga, travel, and anything matcha. Budget flexible...",
 ];
@@ -18,15 +18,15 @@ const PLACEHOLDER_EXAMPLES = [
 const PERSONA_PRESETS = [
   {
     label: "Her birthday's coming up",
-    prefill: "It's my sister's birthday. She's into working out, knitting, and cycling. She's in her late 20s. I want to get her a nice gift.",
+    prefill: "It's my sister's birthday. She's into fitness, knitting, and cycling. She's in her late 20s and I want to get her something she'll actually use.",
   },
   {
     label: "Something for Mom",
-    prefill: "I want to get my mom something special. She loves gardening, cooking Italian food, and reading mystery novels. She always says she doesn't need anything.",
+    prefill: "I want to get my mom something special. She loves cooking Italian food and spends every weekend in her garden. She always says she doesn't need anything.",
   },
   {
     label: "For my girlfriend",
-    prefill: "Looking for a gift for my girlfriend. She's into skincare, yoga, and coffee. I want to get her something she'll really like.",
+    prefill: "Looking for a gift for my girlfriend. She's really into skincare, yoga, and specialty coffee. I want to get her something she'll really like.",
   },
 ];
 
@@ -264,7 +264,7 @@ function HomeInner() {
                         setInput(preset.prefill);
                         setPresetStep('budget');
                       }}
-                      className="text-sm text-warm-gray bg-white/[0.06] px-4 py-2 rounded-full border border-border/60 cursor-pointer hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 animate-fade-up"
+                      className="text-sm text-warm-gray-light bg-white/[0.08] px-4 py-2 rounded-full border border-border shadow-sm cursor-pointer hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 animate-fade-up"
                       style={{ animationDelay: `${0.3 + i * 0.08}s` }}
                     >
                       {preset.label}
@@ -282,7 +282,7 @@ function HomeInner() {
                         setInput(prev => prev + preset.append);
                         setPresetStep('done');
                       }}
-                      className="text-sm text-warm-gray bg-white/[0.06] px-4 py-2 rounded-full border border-border/60 cursor-pointer hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 animate-fade-up"
+                      className="text-sm text-warm-gray-light bg-white/[0.08] px-4 py-2 rounded-full border border-border shadow-sm cursor-pointer hover:border-copper/40 hover:text-copper active:scale-[0.97] transition-all duration-300 animate-fade-up"
                       style={{ animationDelay: `${i * 0.08}s` }}
                     >
                       {preset.label}
