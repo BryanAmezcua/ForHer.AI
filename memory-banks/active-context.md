@@ -1,7 +1,7 @@
 ## Current state of development
 
 ### Current Focus
-**Gift recommendation quality overhaul complete.** Major changes: (1) Query generation rewired — "gift" keyword banned from all search queries, now uses product-category approach (4 direct + 1 adjacent/surprise queries), (2) New LLM reranker step between prune and row assignment — brand-first quality ranking surfaces recognizable brands over junk, (3) Pruning simplified to coarse pre-filter (min price raised to $20, gift-set ban removed, 6-factor scoring removed), (4) Rows sorted by match score instead of price, (5) Trending queries reduced to 1 backup. Net result: same API cost, dramatically better quality products.
+**User accounts & saved recipients built (Phase 3).** Auth.js v5 with Google OAuth + email/password credentials. JWT sessions. Recipient profiles with CRUD, dashboard, and save-from-results flow. Needs env vars set on Vercel + Google OAuth credentials created before deploy.
 
 ### What's Working
 - Landing page renders with five-phase UI (input → thinking → clarifying → populating → results)
@@ -41,6 +41,14 @@
 - Mobile responsive layout
 - Deployed to Vercel with auto-deploy on push to master
 - DNS configured via Cloudflare → Vercel
+- **SEO infrastructure:** sitemap.js, robots.js, structured data (Organization, WebSite, WebApplication in root layout; BreadcrumbList, Product, FAQPage on landing pages)
+- **15 SEO landing pages** with pre-built taste profiles, FAQs, and per-page OG images (gifts-for-girlfriend, gifts-for-mom, gifts-for-wife, gifts-for-sister, birthday-gifts-for-her, christmas-gifts-for-her, valentines-gifts-for-her, anniversary-gifts-for-her, gifts-for-daughter, gifts-for-best-friend, mothers-day-gifts, graduation-gifts-for-her, gifts-for-her-under-50, unique-gifts-for-her, last-minute-gifts-for-her)
+- **Footer:** multi-column grid on desktop (2-col sm, 3-col lg), truncated to 6 links with "Show all" toggle on mobile
+- **Image domains restricted** to Amazon CDN hostnames in next.config.mjs
+- **User authentication** via Auth.js v5 (Google OAuth + email/password, JWT sessions)
+- **Saved recipient profiles** — CRUD API, dashboard, save-from-results flow
+- **Dashboard** at `/dashboard` — recipient cards with edit, delete, "Get gifts" CTA
+- **Save button** in results nav bar — prompts auth if needed, saves taste profile as named recipient
 
 ### What's NOT Working / Incomplete
 - "Adjust Preferences" button in results view has no functionality (commented out)
@@ -48,22 +56,25 @@
 - Error handling is basic (resets to input on failure)
 
 ### Known TODOs
-1. Push to master and verify recommendation quality overhaul in production
-2. Confirm no queries contain "gift" in debug logs
-3. Confirm quality products (known brands, no slogan socks/novelty junk)
-4. Monitor credit usage — same ~50 Amazon credits + ~$0.001 reranker per request
-5. Implement refinement loop (Phase 2)
-6. Wire up "Adjust Preferences" button
+1. **Set Vercel env vars:** `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
+2. **Create Google OAuth credentials** in Google Cloud Console (gifther.ai authorized redirect URIs)
+3. Register with Google Search Console and add verification meta tag
+4. Submit sitemap to Google Search Console
+5. Monitor landing page indexing and impressions
+6. Implement refinement loop (Phase 2)
+7. Wire up "Adjust Preferences" button
+8. Phase 4: Email reminders (Resend + Vercel cron)
 
 ### Recent Changes
-- **Gift recommendation quality overhaul** — Rewrote query generation to ban "gift" keyword and use product-category approach (4 direct + 1 adjacent/surprise queries). Added LLM reranker (`rerank-products.js`) with brand-first quality ranking. Simplified pruning to coarse pre-filter (raised min price $5→$20, removed gift set ban, removed 6-factor scoring). Rows sorted by matchScore instead of price. Trending queries reduced to 1 backup with better text. Reranker reasons passed to insight generation for more specific descriptions.
-- **Amazon-only migration** — Removed Google Shopping (search-scrapingdog.js), Immersive Product enrichment (enrich-scrapingdog.js), PDP scoring (score-pdp.js), and unused search-queries-deep.js. All 5 queries now go to Amazon Search API. Added `whySheLikesIt` LLM field (personalized descriptions). Removed Amazon pill from frontend. CTA changed to "View on Amazon". Cache TTL reduced from 48h to 24h. Credit usage cut from ~70 to ~50 per request.
-- **Session persistence & shareable URLs** — Recommendation sessions saved to MongoDB `sessions` collection (7-day TTL). 10-char hex session IDs. Fire-and-forget save after pipeline. `SessionResults` component extracted from `page.js`. Share button in nav bar copies `/s/[id]` URL. Server component at `/s/[id]` with dynamic OG tags. Custom 404 for expired/invalid sessions.
+- **User accounts & saved recipients (Phase 3)** — Auth.js v5 with Google OAuth + email/password, JWT sessions, `users`/`accounts` collections auto-created. Recipient profiles with CRUD API, dashboard UI, save-from-results flow. Auth is invisible until user actively saves. Dashboard prefills main page for returning searches.
+- **SEO overhaul** — Added Organization/WebSite/WebApplication JSON-LD to root layout. BreadcrumbList schema on landing pages. OG image references in root metadata + per-landing-page OG image generation. Twitter card + OG image on shared sessions. Meta description enriched. Theme-color added. Image domains tightened to Amazon CDN. 10 new landing pages (15 total) targeting seasonal, occasion, budget, and intent keywords. All landing page copy scrubbed of aesthetic/vibe wording. Footer redesigned: multi-column grid desktop, expandable mobile.
+- **Gift recommendation quality overhaul** — Rewrote query generation to ban "gift" keyword and use product-category approach (4 direct + 1 adjacent/surprise queries). Added LLM reranker (`rerank-products.js`) with brand-first quality ranking. Simplified pruning to coarse pre-filter (raised min price $5→$20, removed gift set ban, removed 6-factor scoring). Rows sorted by matchScore instead of price.
+- **Session persistence & shareable URLs** — Recommendation sessions saved to MongoDB `sessions` collection (7-day TTL). Shareable via `/s/[id]` URLs with dynamic OG tags.
 
 ### Active Decisions / Open Questions
 - **AI service decided:** OpenAI for all LLM calls (model configured in `src/lib/openai.js`)
-- **MongoDB in use** — cluster `cached-data`, database `GiftHer`, collection `products` for shopping cache (Amazon results only, 24h TTL); broader persistence deferred to Phase 3
+- **MongoDB in use** — cluster `cached-data`, database `GiftHer`. Collections: `products` (shopping cache, 24h TTL), `sessions` (shareable sessions, 7-day TTL), `recipients` (saved recipient profiles), `users` (Auth.js user accounts), `accounts` (Auth.js OAuth links)
 - **ScrapingDog active** for Amazon Search API only. LITE plan: ~50 credits per uncached request, ~4,000 uncached requests/month.
 - **Deployment:** Vercel Pro ($20/mo) + Cloudflare DNS + gifther.ai domain
 - **Amazon Associates** — Associate Store ID: `giftherai-20`. Requires 3 qualifying sales in 180 days. PA-API 5.0 deprecated April 2026; Creators API for future use.
-- **Next step:** Push to deploy, verify Amazon-only pipeline live, monitor credit usage
+- **Next step:** Set Auth env vars on Vercel, create Google OAuth credentials, push to deploy and verify auth + recipient save flow

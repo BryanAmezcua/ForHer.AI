@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/mongoose';
 
 const sessionSchema = new mongoose.Schema({
   _id: { type: String },
+  userId: { type: String, default: null, index: true },
   description: { type: String },
   rows: { type: mongoose.Schema.Types.Mixed, required: true },
   meta: {

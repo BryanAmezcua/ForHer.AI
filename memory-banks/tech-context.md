@@ -13,6 +13,14 @@
 | CSS          | PostCSS + @tailwindcss/postcss | ^8.5.6   |
 | Animations   | tw-animate-css                 | ^1.4.0   |
 
+### Authentication
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Auth framework | Auth.js v5 (NextAuth) | 5.0.0-beta.30 |
+| Auth adapter | @auth/mongodb-adapter | latest |
+| MongoDB client | mongodb (raw driver, for Auth.js adapter) | latest |
+| Password hashing | bcryptjs | latest |
+
 ### Utility Libraries
 - `class-variance-authority` (^0.7.1) — Component variant management
 - `clsx` (^2.1.1) — Conditional class joining
@@ -34,6 +42,9 @@
 | `OPENAI_API_KEY` | OpenAI API access |
 | `SCRAPINGDOG_API_KEY` | ScrapingDog Amazon Search API |
 | `MONGODB_URI` | MongoDB Atlas connection string |
+| `AUTH_SECRET` | Auth.js session signing secret (generate via `npx auth secret`) |
+| `AUTH_GOOGLE_ID` | Google Cloud Console OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | Google Cloud Console OAuth client secret |
 
 These are set in both `.env.local` (local dev) and Vercel project settings (production).
 
@@ -41,7 +52,7 @@ These are set in both `.env.local` (local dev) and Vercel project settings (prod
 | File               | Purpose                                      |
 |--------------------|----------------------------------------------|
 | `package.json`     | Dependencies and scripts (`dev`, `build`, `start`) |
-| `next.config.mjs`  | Next.js config — allows all remote image hosts |
+| `next.config.mjs`  | Next.js config — remote image hosts restricted to Amazon CDN |
 | `jsconfig.json`    | Path alias: `@/*` → `./src/*`                |
 | `components.json`  | shadcn/ui config (new-york style, JSX, CSS vars) |
 | `postcss.config.mjs` | PostCSS with `@tailwindcss/postcss`         |
@@ -59,8 +70,10 @@ npm run start  # Start production server
 - **No separate Tailwind config file:** All design tokens live in `globals.css` via CSS variables
 - **App Router:** Using Next.js App Router (not Pages Router)
 - **Client-side main page:** `page.js` uses `'use client'` for interactive state management
-- **Remote images allowed:** `next.config.mjs` allows images from any HTTPS hostname
-- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`. Cluster: `cached-data`, database: `GiftHer`. Collections: `products` (Amazon product cache, 24h TTL), `sessions` (shareable recommendation sessions, 7-day TTL). Atlas IP whitelist: `0.0.0.0/0` (required for Vercel serverless).
+- **Remote images restricted:** `next.config.mjs` whitelists Amazon CDN hostnames only (images-na.ssl-images-amazon.com, m.media-amazon.com, images-eu.ssl-images-amazon.com)
+- **Mongoose active:** MongoDB connection singleton at `src/lib/mongoose.js`. Cluster: `cached-data`, database: `GiftHer`. Collections: `products` (Amazon product cache, 24h TTL), `sessions` (shareable recommendation sessions, 7-day TTL), `recipients` (saved recipient profiles). Atlas IP whitelist: `0.0.0.0/0` (required for Vercel serverless).
+- **Raw MongoDB client:** `src/lib/mongodb-client.js` provides a `MongoClient` singleton for the Auth.js MongoDB adapter (coexists with Mongoose).
+- **Auth.js v5:** JWT strategy (avoids `sessions` collection name collision). Google OAuth + email/password credentials. Config at `src/lib/auth.js`. Auth.js auto-creates `users` and `accounts` collections in `GiftHer` DB.
 - **ScrapingDog:** Amazon Search API only. ~50 credits per uncached request (~4,000 requests/month on LITE plan $40/mo).
 - **Vercel auto-deploy:** Every push to `master` triggers a production deployment.
 
@@ -72,7 +85,9 @@ npm run start  # Start production server
 
 ### File Conventions
 - Components: `src/components/ui/*.jsx` (shadcn primitives), `src/components/*.jsx` (domain components)
-- Pages: `src/app/page.js`
+- Pages: `src/app/page.js` (homepage), `src/app/(landing)/[slug]/page.js` (15 SEO landing pages), `src/app/s/[id]/page.js` (shared sessions), `src/app/dashboard/page.js` (recipient list), `src/app/dashboard/recipients/[id]/page.js` (edit recipient), `src/app/auth/signin/page.js`, `src/app/auth/register/page.js`
+- Landing page config: `src/lib/landing-pages.js` (SEO metadata, taste profiles, FAQs, CTAs for all 15 pages)
+- SEO: `src/app/sitemap.js`, `src/app/robots.js`, `src/app/opengraph-image.js`, `src/app/(landing)/[slug]/opengraph-image.js`
 - API Routes: `src/app/api/*/route.js`
 - Pipeline: `src/lib/pipeline.js` (orchestrator), `src/lib/*.js` (individual steps)
 - Search: `src/lib/search-amazon.js` (Amazon Search + cache)

@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { RichSummary } from '@/components/RichSummary';
 import { GiftCard } from '@/components/GiftCard';
+import { SaveRecipientPrompt } from '@/components/SaveRecipientPrompt';
 
-export function SessionResults({ rows, meta, sessionId, isShared, onStartOver }) {
+export function SessionResults({ rows, meta, sessionId, tasteProfile, isShared, onStartOver }) {
   const [copied, setCopied] = useState(false);
 
   const handleShare = async () => {
@@ -55,26 +56,35 @@ export function SessionResults({ rows, meta, sessionId, isShared, onStartOver })
           GiftHer.ai
         </span>
 
-        {sessionId ? (
-          <button
-            onClick={handleShare}
-            className="flex items-center gap-1.5 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-copper/30"
-          >
-            {copied ? (
-              <span className="text-copper text-xs font-medium">Copied!</span>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-60">
-                  <path d="M4 12V14H14V4H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" />
-                </svg>
-                <span>Share</span>
-              </>
-            )}
-          </button>
-        ) : (
-          <span className="w-4" />
-        )}
+        <div className="flex items-center gap-2">
+          {!isShared && tasteProfile && (
+            <SaveRecipientPrompt
+              tasteProfile={tasteProfile}
+              sessionId={sessionId}
+            />
+          )}
+
+          {sessionId && (
+            <button
+              onClick={handleShare}
+              className="flex items-center gap-1.5 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-copper/30"
+            >
+              {copied ? (
+                <span className="text-copper text-xs font-medium">Copied!</span>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-60">
+                    <path d="M4 12V14H14V4H12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <rect x="2" y="2" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                  <span>Share</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {!sessionId && !tasteProfile && <span className="w-4" />}
+        </div>
       </nav>
 
       {/* Main content */}

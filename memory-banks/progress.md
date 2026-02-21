@@ -114,6 +114,20 @@
 - [ ] Confirm no queries contain "gift" in debug logs
 - [ ] Confirm quality improvement in results
 
+### SEO Overhaul (Complete)
+- [x] Root layout: OG image reference, richer meta description, theme-color, Twitter image
+- [x] Organization + WebSite + WebApplication JSON-LD schemas in root layout
+- [x] Per-landing-page OG image generation (`opengraph-image.js` with dynamic headlines)
+- [x] BreadcrumbList JSON-LD added to all landing pages
+- [x] Shared session metadata: Twitter card, OG image, siteName
+- [x] Image domain whitelist tightened (was `**`, now Amazon CDN hostnames only)
+- [x] 10 new landing pages added (15 total): christmas, valentines, anniversary, daughter, best friend, mothers day, graduation, under-50, unique, last-minute
+- [x] Each landing page has: SEO metadata, taste profile with search queries, 4 FAQ items, CTA prefill
+- [x] Removed all aesthetic/vibe wording from landing page copy (cozy, warm, luxury, elegant, romantic, etc.)
+- [x] Footer redesigned: multi-column grid on desktop, truncated list with "Show all" toggle on mobile
+- [x] Sitemap auto-generates from landing page slugs (homepage priority 1.0, landing pages 0.8)
+- [x] Robots.txt: allows /, disallows /api/ and /s/, references sitemap
+
 ### Phase 2 — Not Started
 - [ ] Reject a pick and say why
 - [ ] System returns alternatives informed by rejection
@@ -121,15 +135,45 @@
 - [ ] Conversational back-and-forth without leaving the page
 - [ ] Wire up "Adjust Preferences" button
 
-### Phase 3 — Not Started
-- [ ] User accounts (email or Google auth)
-- [ ] Save recipient as named profile
-- [ ] Profile accumulates past gifts, preferences, rejection reasons
-- [ ] Agent loads full recipient context on return
-- [ ] Gift history prevents repeats
+### Phase 3 — User Accounts & Saved Recipients (Complete — Code Built, Needs Deploy)
+#### Phase 3A: Authentication Foundation
+- [x] Auth.js v5 (NextAuth beta.30) with JWT strategy
+- [x] Google OAuth provider
+- [x] Email/password Credentials provider (bcryptjs 12 rounds)
+- [x] Raw MongoDB client singleton for Auth.js adapter (`src/lib/mongodb-client.js`)
+- [x] Auth config (`src/lib/auth.js`) with JWT callbacks
+- [x] Route handler (`src/app/api/auth/[...nextauth]/route.js`)
+- [x] Registration API (`src/app/api/auth/register/route.js`)
+- [x] Custom sign-in page (`src/app/auth/signin/page.js`)
+- [x] Custom registration page (`src/app/auth/register/page.js`)
+- [x] SessionProvider wrapper (`src/components/AuthProvider.jsx` + layout.js)
+- [ ] Set env vars on Vercel: `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`
+- [ ] Create Google Cloud OAuth credentials for gifther.ai
 
-### Phase 4 — Not Started
-- [ ] Occasion reminders
+#### Phase 3B: Recipient Profiles
+- [x] Recipient Mongoose model (`src/lib/models/recipient.js`)
+- [x] CRUD API routes: `GET/POST /api/recipients`, `GET/PUT/DELETE /api/recipients/[id]`
+- [x] Create from session API: `POST /api/recipients/from-session`
+- [x] Dashboard page (`src/app/dashboard/page.js`)
+- [x] Recipient edit page (`src/app/dashboard/recipients/[id]/page.js`)
+- [x] RecipientCard component (`src/components/RecipientCard.jsx`)
+
+#### Phase 3C: Integration with Existing Flow
+- [x] SaveRecipientPrompt component (`src/components/SaveRecipientPrompt.jsx`)
+- [x] Save button in results nav bar (SessionResults updated)
+- [x] tasteProfile passed to SessionResults
+- [x] Dashboard "Get gifts" → prefills main page via `?profile=` param and auto-submits
+- [x] Optional `userId` field added to Session model
+- [ ] Verify live in production
+
+### Phase 4 — Email Reminders (Not Started)
+- [ ] Resend email service integration
+- [ ] Daily Vercel cron job for birthday/holiday reminders
+- [ ] Birthday and holiday email templates
+- [ ] Sent reminder tracking (prevents duplicates)
+- [ ] One-click unsubscribe via signed JWT
+
+### Phase 5 — Not Started
 - [ ] Trending gift integration
 - [ ] Expanded product database
 - [ ] Affiliate monetization

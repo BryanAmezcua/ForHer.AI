@@ -2,6 +2,7 @@ import Script from 'next/script';
 import { Manrope } from 'next/font/google';
 import './globals.css';
 import { SiteFooter } from '@/components/SiteFooter';
+import { AuthProvider } from '@/components/AuthProvider';
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -72,8 +73,10 @@ export default function RootLayout({ children }) {
             }),
           }}
         />
-        {children}
-        <SiteFooter />
+        <AuthProvider>
+          {children}
+          <SiteFooter />
+        </AuthProvider>
         {process.env.NODE_ENV === 'production' && (
           <Script
             defer

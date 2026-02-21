@@ -97,6 +97,23 @@ function HomeInner() {
     }
   }, [searchParams]);
 
+  // Auto-submit from dashboard "Get gifts" (?profile= base64-encoded taste profile)
+  const profileAutoSubmitted = useRef(false);
+  useEffect(() => {
+    if (profileAutoSubmitted.current) return;
+    const profileParam = searchParams.get('profile');
+    if (profileParam) {
+      profileAutoSubmitted.current = true;
+      try {
+        const decoded = JSON.parse(atob(profileParam));
+        setTasteProfile(decoded);
+        fetchRecommendations(decoded);
+      } catch {
+        // invalid base64 or JSON — ignore
+      }
+    }
+  }, [searchParams]);
+
   // Advance thinking steps on timers
   useEffect(() => {
     if (phase !== 'thinking') return;
@@ -459,6 +476,7 @@ function HomeInner() {
             rows={rows}
             meta={meta}
             sessionId={sessionId}
+            tasteProfile={tasteProfile}
             isShared={false}
             onStartOver={handleStartOver}
           />

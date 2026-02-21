@@ -15,11 +15,20 @@ ForHer.AI/
 ├── src/
 │   ├── app/
 │   │   ├── page.js            # Main landing page (client component)
-│   │   ├── layout.js          # Root layout with Manrope font
+│   │   ├── layout.js          # Root layout with Manrope font, Organization/WebSite/WebApplication JSON-LD
 │   │   ├── globals.css         # Tailwind + CSS variables + animations
+│   │   ├── opengraph-image.js  # Dynamic OG image (1200x630, brand logo + tagline)
+│   │   ├── sitemap.js          # Dynamic sitemap (homepage + all landing pages)
+│   │   ├── robots.js           # Robots.txt (allows /, disallows /api/ and /s/)
+│   │   ├── icon.js             # Dynamic favicon (32x32)
+│   │   ├── apple-icon.js       # Dynamic apple-touch-icon (180x180)
+│   │   ├── (landing)/
+│   │   │   └── [slug]/
+│   │   │       ├── page.js             # Landing pages (SSG, 24h revalidation, JSON-LD with BreadcrumbList/Product/FAQPage)
+│   │   │       └── opengraph-image.js  # Per-landing-page OG images with dynamic headlines
 │   │   ├── s/
 │   │   │   └── [id]/
-│   │   │       ├── page.js         # Shared session view (server component)
+│   │   │       ├── page.js         # Shared session view (server component, noindex)
 │   │   │       └── not-found.js    # Custom 404 for expired/invalid sessions
 │   │   └── api/
 │   │       ├── taste-profile/
@@ -28,6 +37,7 @@ ForHer.AI/
 │   │           └── route.js    # POST endpoint for gift recommendations
 │   ├── components/
 │   │   ├── SessionResults.jsx   # Reusable results view (used by / and /s/[id])
+│   │   ├── SiteFooter.jsx      # Site footer (brand + landing page links; multi-col desktop, truncated mobile with expand toggle)
 │   │   ├── ProfilePill.jsx     # Taste-profile pill (category-colored capsule)
 │   │   ├── ProductImage.jsx    # Product image with loading/error fallback + gallery
 │   │   ├── RichSummary.jsx     # Renders summary text with **bold** markers
@@ -43,6 +53,7 @@ ForHer.AI/
 │       ├── mongoose.js         # MongoDB connection singleton (cached, targets serper-queries DB)
 │       ├── taste-profile.js    # generateProfileAndQueries() — LLM taste extraction + query generation (always returns searchQueries)
 │       ├── pipeline.js         # runPipeline() — orchestrates full product discovery pipeline
+│       ├── landing-pages.js    # Landing page configs (15 pages): SEO metadata, taste profiles, FAQs, CTAs
 │       ├── search-amazon.js    # executeAmazonQueries() + getAllCachedResults() — ScrapingDog Amazon Search API + MongoDB cache + affiliate tagging
 │       ├── clean-title.js      # cleanTitle() — strips e-commerce junk from product titles (brands, recipients, sizes)
 │       ├── dedupe-products.js  # dedupeProducts() — Jaccard + price clustering for shopping results
@@ -143,7 +154,7 @@ The main page uses a `phase` state to switch between five views:
 
 **Session Persistence (MongoDB):**
 - Model: `src/lib/models/session.js` — collection `sessions`
-- Schema: `_id` (10-char hex string), `recommendations` (Mixed), `meta` ({ curatedFor, summary }), `tasteProfile` (Mixed), `createdAt` (Date), `expiresAt` (Date, TTL index)
+- Schema: `_id` (10-char hex string), `userId` (String, optional, indexed), `recommendations` (Mixed), `meta` ({ curatedFor, summary }), `tasteProfile` (Mixed), `createdAt` (Date), `expiresAt` (Date, TTL index)
 - 7-day TTL — MongoDB auto-deletes expired sessions
 - Session ID generated via `crypto.randomUUID()` (first 10 hex chars)
 - Saved fire-and-forget after pipeline completes (no await, `.catch()` logs errors)
@@ -151,6 +162,34 @@ The main page uses a `phase` state to switch between five views:
 - Share button copies URL to clipboard with "Copied!" feedback
 - On main page, URL updates to `/s/[id]` via `history.replaceState` after results load
 - Graceful degradation: if save fails, user still gets results (just no shareable URL)
+
+**Authentication (Auth.js v5):**
+- Config: `src/lib/auth.js` — JWT strategy, Google OAuth + email/password Credentials
+- Raw MongoDB client: `src/lib/mongodb-client.js` (singleton for Auth.js adapter, separate from Mongoose)
+- Providers: Google OAuth (one-click), Credentials (bcryptjs 12 rounds)
+- JWT callbacks attach `user.id` to token and session
+- Custom pages: `/auth/signin`, `/auth/register`
+- Route handler: `src/app/api/auth/[...nextauth]/route.js`
+- Registration: `src/app/api/auth/register/route.js` (hashes password, creates user in `users` collection)
+- Auth.js auto-creates `users` and `accounts` collections in `GiftHer` DB
+- `SessionProvider` wraps app via `src/components/AuthProvider.jsx` (client component wrapper)
+- Auth is invisible on main page — only prompted after user sees results and wants to save
+
+**Recipient Profiles (MongoDB):**
+- Model: `src/lib/models/recipient.js` — collection `recipients`
+- Schema: `userId` (indexed), `label`, `tasteProfile` (Mixed type — stores pipeline profile as-is minus searchQueries), `birthday`, `reminders` (birthday flag + holiday array), `giftHistory` (sessionId/date/occasion), `createdAt`, `updatedAt`
+- CRUD routes: `GET/POST /api/recipients`, `GET/PUT/DELETE /api/recipients/[id]`, `POST /api/recipients/from-session`
+- All routes verify ownership: `recipient.userId === session.user.id`
+- `searchQueries` stripped before save — regenerated each run
+
+**Save Flow:**
+- Results page shows "Save" button in nav bar (via `SaveRecipientPrompt` component)
+- If signed in → inline label input → saves immediately
+- If not signed in → auth panel (Google OAuth redirects to Google then back; email sign-in link to `/auth/signin`)
+- `sessionStorage.pendingSave` flag auto-opens label input after returning from Google OAuth redirect
+- After save → "Saved!" confirmation + "View dashboard" link
+- Dashboard at `/dashboard` — recipient cards with "Get gifts" CTA
+- "Get gifts" encodes `tasteProfile` as base64, redirects to `/?profile=...` which auto-submits
 
 **Recommendation Card Schema:**
 Each recommendation object contains:
