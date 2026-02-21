@@ -170,6 +170,14 @@ export default async function LandingPage({ params }) {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@graph': [
+              // BreadcrumbList
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'Home', item: 'https://gifther.ai' },
+                  { '@type': 'ListItem', position: 2, name: seo.h1.replace(/ — AI-Curated Picks$/, '') },
+                ],
+              },
               // WebPage
               {
                 '@type': 'WebPage',

@@ -22,6 +22,14 @@ export async function generateMetadata({ params }) {
     openGraph: {
       title: `Gifts for ${curatedFor} — GiftHer.ai`,
       description: session.meta?.summary || `A curated gift list for ${curatedFor}`,
+      siteName: 'GiftHer.ai',
+      images: [{ url: '/opengraph-image', width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Gifts for ${curatedFor} — GiftHer.ai`,
+      description: session.meta?.summary || `A curated gift list for ${curatedFor}`,
+      images: ['/opengraph-image'],
     },
   };
 }
