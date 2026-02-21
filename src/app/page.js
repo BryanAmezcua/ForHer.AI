@@ -229,7 +229,7 @@ function HomeInner() {
             <header className="text-center mb-14 animate-fade-up relative">
               <BrandMark />
               <h1 className="text-3xl sm:text-[2.6rem] font-bold tracking-tight leading-none">
-                <span className="text-foreground">Gift</span><span className="text-copper">Her</span><span className="text-muted-foreground font-normal">.ai</span>
+                <span className="text-foreground">Gift</span><span className="text-copper">Her</span>
               </h1>
             </header>
 
