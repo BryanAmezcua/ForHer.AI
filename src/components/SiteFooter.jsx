@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from 'next-auth/react';
 import { LANDING_PAGES } from '@/lib/landing-pages';
 
 const VISIBLE_ON_MOBILE = 6;
@@ -11,6 +12,7 @@ const footerLinks = Object.entries(LANDING_PAGES).map(([slug, page]) => ({
 }));
 
 export function SiteFooter() {
+  const { data: session } = useSession();
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -22,6 +24,21 @@ export function SiteFooter() {
               GiftHer.ai
             </a>
             <p className="text-xs text-warm-gray mt-1">AI-powered gift finder</p>
+            {session?.user ? (
+              <a
+                href="/dashboard"
+                className="text-xs text-warm-gray hover:text-copper transition-colors mt-2 inline-block"
+              >
+                Dashboard
+              </a>
+            ) : (
+              <a
+                href="/auth/signin"
+                className="text-xs text-warm-gray hover:text-copper transition-colors mt-2 inline-block"
+              >
+                Sign in
+              </a>
+            )}
           </div>
 
           <div className="min-w-0">

@@ -47,7 +47,8 @@
 - **Image domains restricted** to Amazon CDN hostnames in next.config.mjs
 - **User authentication** via Auth.js v5 (Google OAuth + email/password, JWT sessions)
 - **Saved recipient profiles** — CRUD API, dashboard, save-from-results flow
-- **Dashboard** at `/dashboard` — recipient cards with edit, delete, "Get gifts" CTA
+- **Dashboard** at `/dashboard` — polished recipient cards with entrance animations, hover lift, glass surfaces, avatar initials, ProfilePill-style interest/aesthetic pills, skeleton loading state, personalized time-of-day greeting, "Add new" card, and three-column nav matching SessionResults
+- **Recipient edit page** (`/dashboard/recipients/[id]`) — premium visual treatment matching dashboard: skeleton loading with shimmer, rich not-found state, three-column nav, avatar header, two glass-surface form cards ("About Her" + "Dates & Reminders"), pill-toggle reminders, polished save button with checkmark feedback
 - **Save button** in results nav bar — prompts auth if needed, saves taste profile as named recipient
 
 ### What's NOT Working / Incomplete
@@ -67,6 +68,7 @@
 
 ### Recent Changes
 - **User accounts & saved recipients (Phase 3)** — Auth.js v5 with Google OAuth + email/password, JWT sessions, `users`/`accounts` collections auto-created. Recipient profiles with CRUD API, dashboard UI, save-from-results flow. Auth is invisible until user actively saves. Dashboard prefills main page for returning searches.
+- **Dashboard visual polish (Phase 3D)** — RecipientCard and dashboard page revamped to match results page quality: skeleton loading, staggered entrance animations, hover effects, personalized greeting, rich empty state, "Add new" card.
 - **SEO overhaul** — Added Organization/WebSite/WebApplication JSON-LD to root layout. BreadcrumbList schema on landing pages. OG image references in root metadata + per-landing-page OG image generation. Twitter card + OG image on shared sessions. Meta description enriched. Theme-color added. Image domains tightened to Amazon CDN. 10 new landing pages (15 total) targeting seasonal, occasion, budget, and intent keywords. All landing page copy scrubbed of aesthetic/vibe wording. Footer redesigned: multi-column grid desktop, expandable mobile.
 - **Gift recommendation quality overhaul** — Rewrote query generation to ban "gift" keyword and use product-category approach (4 direct + 1 adjacent/surprise queries). Added LLM reranker (`rerank-products.js`) with brand-first quality ranking. Simplified pruning to coarse pre-filter (raised min price $5→$20, removed gift set ban, removed 6-factor scoring). Rows sorted by matchScore instead of price.
 - **Session persistence & shareable URLs** — Recommendation sessions saved to MongoDB `sessions` collection (7-day TTL). Shareable via `/s/[id]` URLs with dynamic OG tags.

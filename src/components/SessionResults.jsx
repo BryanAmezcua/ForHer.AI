@@ -1,12 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 import { RichSummary } from '@/components/RichSummary';
 import { GiftCard } from '@/components/GiftCard';
 import { SaveRecipientPrompt } from '@/components/SaveRecipientPrompt';
 
 export function SessionResults({ rows, meta, sessionId, tasteProfile, isShared, onStartOver }) {
+  const { data: session } = useSession();
   const [copied, setCopied] = useState(false);
+  const [saveOpen, setSaveOpen] = useState(false);
+  const [saveDone, setSaveDone] = useState(false);
+
+  // After returning from Google OAuth, auto-open panel if save was pending
+  useEffect(() => {
+    if (session?.user && sessionStorage.getItem('pendingSave')) {
+      sessionStorage.removeItem('pendingSave');
+      setSaveOpen(true);
+    }
+  }, [session]);
 
   const handleShare = async () => {
     const url = `${window.location.origin}/s/${sessionId}`;
@@ -24,6 +36,16 @@ export function SessionResults({ rows, meta, sessionId, tasteProfile, isShared, 
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleSaved = () => {
+    setSaveDone(true);
+    // Auto-close panel after showing done state
+    setTimeout(() => setSaveOpen(false), 2500);
+  };
+
+  const handleClose = () => {
+    setSaveOpen(false);
   };
 
   return (
@@ -57,11 +79,28 @@ export function SessionResults({ rows, meta, sessionId, tasteProfile, isShared, 
         </span>
 
         <div className="flex items-center gap-2">
-          {!isShared && tasteProfile && (
-            <SaveRecipientPrompt
-              tasteProfile={tasteProfile}
-              sessionId={sessionId}
-            />
+          {!isShared && tasteProfile && !saveDone && (
+            <button
+              onClick={() => setSaveOpen((o) => !o)}
+              className="flex items-center gap-1.5 text-sm text-warm-gray-light hover:text-foreground transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/10 hover:border-copper/30"
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className="opacity-60">
+                <path d="M8 1v14M1 8h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+              </svg>
+              <span>Save</span>
+            </button>
+          )}
+
+          {!isShared && saveDone && (
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-copper font-medium">Saved!</span>
+              <a
+                href="/dashboard"
+                className="text-sm text-warm-gray-light hover:text-foreground underline transition-colors"
+              >
+                View dashboard
+              </a>
+            </div>
           )}
 
           {sessionId && (
@@ -86,6 +125,28 @@ export function SessionResults({ rows, meta, sessionId, tasteProfile, isShared, 
           {!sessionId && !tasteProfile && <span className="w-4" />}
         </div>
       </nav>
+
+      {/* Save recipient reveal panel */}
+      {!isShared && tasteProfile && (
+        <div
+          className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${
+            saveOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+          }`}
+        >
+          <div className="overflow-hidden">
+            <div className="border-b border-border/50">
+              {saveOpen && (
+                <SaveRecipientPrompt
+                  tasteProfile={tasteProfile}
+                  sessionId={sessionId}
+                  onSaved={handleSaved}
+                  onClose={handleClose}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main content */}
       <div className="max-w-[1000px] mx-auto px-4 sm:px-6 pt-10 pb-16">

@@ -166,6 +166,26 @@
 - [x] Optional `userId` field added to Session model
 - [ ] Verify live in production
 
+#### Phase 3D: Dashboard Visual Polish
+- [x] RecipientCard: entrance animation, hover lift, glass surface, avatar initial, hover-reveal actions, ProfilePill-style pills, aesthetic style pill, meta row, polished CTA
+- [x] Dashboard loading: skeleton UI with warm shimmer (replaces plain "Loading..." text)
+- [x] Dashboard nav: three-column layout matching SessionResults (back chevron + brand center + avatar/sign out)
+- [x] Personalized greeting: time-of-day greeting + first name, dynamic recipient count subtitle
+- [x] Empty state: brand sparkle SVG, descriptive copy, copper CTA with glow
+- [x] Staggered card grid with "Add new" dashed-border card at end
+- [x] All animations reuse existing keyframes (card-entrance, fade-up, card-hover-lift, cta-hover, skeleton-shimmer-warm)
+
+#### Phase 3E: Recipient Edit Page Visual Polish
+- [x] Skeleton loading: nav + avatar + two glass cards with shimmer overlay (matches dashboard skeleton pattern)
+- [x] Not-found state: brand sparkle + heading + subtitle + "Back to dashboard" CTA (matches dashboard empty state)
+- [x] Nav: three-column grid (back chevron + GiftHer.ai center + empty spacer)
+- [x] Page header: "Edit Profile" label + copper avatar circle with initial + name + relationship subtitle, animate-fade-up
+- [x] Form grouped into two glass-surface cards: "About Her" (label, relationship, interests, style, avoids) + "Dates & Reminders" (birthday, pill toggles)
+- [x] Reminder toggles: pill-style buttons replacing checkboxes (copper active state, disabled birthday when no date set)
+- [x] Save button: cta-hover + copper shadow + checkmark SVG on saved state
+- [x] Staggered card-entrance animations (0.1s, 0.22s, 0.34s)
+- [x] All animations reuse existing keyframes (card-entrance, fade-up, skeleton-shimmer-warm, cta-hover)
+
 ### Phase 4 — Email Reminders (Not Started)
 - [ ] Resend email service integration
 - [ ] Daily Vercel cron job for birthday/holiday reminders
